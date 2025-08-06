@@ -47,6 +47,8 @@ window.CCPTApp = {
 };
 
 // ===== INITIALIZATION =====
+// ===== REPLACE YOUR initializeApp() FUNCTION WITH THIS =====
+
 function initializeApp() {
     console.log('🚀 Initializing Clinical Trial Application...');
     
@@ -55,6 +57,12 @@ function initializeApp() {
     
     // Initialize Firebase
     initializeFirebase();
+    
+    // Initialize authentication system - CRITICAL: This was missing!
+    if (!window.AuthSystem) {
+        window.AuthSystem = new AuthSystem();
+        console.log('✅ Authentication system initialized');
+    }
     
     // Set up event listeners
     setupEventListeners();
@@ -961,3 +969,304 @@ function showNBackMainTestButton() {
     if (mainTestBtn) mainTestBtn.style.display = 'block';
     if (practiceAgainBtn) practiceAgainBtn.style.display = 'block';
 }
+// ===== ADD THESE MISSING FUNCTIONS TO END OF APP.JS =====
+
+// Navigation Functions (called by HTML buttons)
+function goHome() {
+    console.log('🏠 Going home...');
+    
+    // Check for running tests
+    const anySessionRunning = window.CCPTApp.isTestInProgress || 
+        (window.CCPTApp.ccptEngine && window.CCPTApp.ccptEngine.isAnySessionRunning()) ||
+        (window.CCPTApp.nbackEngine && window.CCPTApp.nbackEngine.isAnySessionRunning());
+        
+    if (anySessionRunning) {
+        showNavigationWarning();
+        return;
+    }
+    
+    // Navigate based on login status and user type
+    if (!window.CCPTApp.isLoggedIn) {
+        showScreen('login-screen');
+    } else if (window.AuthSystem && window.AuthSystem.isAdmin()) {
+        showScreen('admin-dashboard');
+    } else {
+        showScreen('test-funnel');
+    }
+}
+
+function showNavigationWarning() {
+    const modal = document.getElementById('navigation-warning-modal');
+    if (modal) {
+        modal.style.display = 'block';
+    }
+}
+
+function closeModal() {
+    const modal = document.getElementById('navigation-warning-modal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+// Initialize the authentication system in the app
+function initializeApp() {
+    console.log('🚀 Initializing Clinical Trial Application...');
+    
+    // Hide loading screen
+    hideLoadingScreen();
+    
+    // Initialize Firebase
+    initializeFirebase();
+    
+    // Initialize authentication system - ADD THIS
+    if (!window.AuthSystem) {
+        window.AuthSystem = new AuthSystem();
+    }
+    
+    // Set up event listeners
+    setupEventListeners();
+    
+    // Show login screen
+    showScreen('login-screen');
+    
+    console.log('✅ Application initialized successfully');
+}
+
+// Screen Setup Functions
+function setupCCPTPracticeScreen() {
+    console.log('🎯 Setting up CCPT practice screen...');
+    
+    // Update target display
+    const targetDisplay = document.getElementById('ccpt-target-display');
+    if (targetDisplay && window.CCPTApp.testConfigurations.ccpt.target) {
+        targetDisplay.textContent = window.CCPTApp.testConfigurations.ccpt.target;
+    }
+    
+    // Hide practice results initially
+    const resultsContainer = document.getElementById('ccpt-practice-results');
+    if (resultsContainer) {
+        resultsContainer.classList.remove('show');
+    }
+}
+
+function setupNBackPracticeScreen() {
+    console.log('🧠 Setting up N-Back practice screen...');
+    
+    // Update N-level display
+    const levelDisplay = document.getElementById('nback-level-display');
+    if (levelDisplay && window.CCPTApp.testConfigurations.nback.nLevel) {
+        levelDisplay.textContent = window.CCPTApp.testConfigurations.nback.nLevel;
+    }
+    
+    // Hide practice results initially
+    const resultsContainer = document.getElementById('nback-practice-results');
+    if (resultsContainer) {
+        resultsContainer.classList.remove('show');
+    }
+}
+
+// Enhanced Practice Results Functions
+function displayCCPTPracticeResults(results) {
+    const resultsContainer = document.getElementById('ccpt-practice-results');
+    if (!resultsContainer) return;
+    
+    let performanceLevel, performanceColor, advice;
+    
+    if (results.accuracy >= 0.8) {
+        performanceLevel = 'Excellent!';
+        performanceColor = '#28a745';
+        advice = 'You\'re ready for the main CCPT test!';
+    } else if (results.accuracy >= 0.6) {
+        performanceLevel = 'Good!';
+        performanceColor = '#ffc107';
+        advice = 'Good work! Remember to only respond to targets.';
+    } else {
+        performanceLevel = 'Keep Practicing';
+        performanceColor = '#dc3545';
+        advice = `Remember: Only press SPACEBAR for "${window.CCPTApp.testConfigurations.ccpt.target}". Ignore other letters.`;
+    }
+    
+    resultsContainer.innerHTML = `
+        <h3>Practice Complete!</h3>
+        <div style="text-align: center;">
+            <div style="font-size: 24px; color: ${performanceColor}; font-weight: bold; margin-bottom: 20px;">
+                ${performanceLevel}
+            </div>
+            <div class="metric" style="margin: 10px 0;">
+                <strong>Accuracy:</strong> ${(results.accuracy * 100).toFixed(1)}%
+            </div>
+            <div class="metric" style="margin: 10px 0;">
+                <strong>Response Time:</strong> ${results.averageRT ? results.averageRT.toFixed(0) + 'ms' : 'N/A'}
+            </div>
+            <p style="color: #666; margin-top: 15px;">${advice}</p>
+        </div>
+    `;
+    
+    resultsContainer.classList.add('show');
+    
+    // Show the main test and practice again buttons
+    showCCPTMainTestButton();
+}
+
+function displayNBackPracticeResults(results) {
+    const resultsContainer = document.getElementById('nback-practice-results');
+    if (!resultsContainer) return;
+    
+    let performanceLevel, performanceColor, advice;
+    
+    if (results.accuracy >= 0.7) {
+        performanceLevel = 'Excellent!';
+        performanceColor = '#28a745';
+        advice = 'You\'re ready for the main N-Back test!';
+    } else if (results.accuracy >= 0.5) {
+        performanceLevel = 'Good!';
+        performanceColor = '#ffc107';
+        advice = `Good work! Remember the position from ${window.CCPTApp.testConfigurations.nback.nLevel} steps back.`;
+    } else {
+        performanceLevel = 'Keep Practicing';
+        performanceColor = '#dc3545';
+        advice = `Remember: Press SPACEBAR only when the current position matches the position from ${window.CCPTApp.testConfigurations.nback.nLevel} steps back.`;
+    }
+    
+    resultsContainer.innerHTML = `
+        <h3>Practice Complete!</h3>
+        <div style="text-align: center;">
+            <div style="font-size: 24px; color: ${performanceColor}; font-weight: bold; margin-bottom: 20px;">
+                ${performanceLevel}
+            </div>
+            <div class="nback-metrics">
+                <div class="nback-metric">
+                    <span class="nback-metric-label">Accuracy</span>
+                    <span class="nback-metric-value">${(results.accuracy * 100).toFixed(1)}%</span>
+                </div>
+                <div class="nback-metric">
+                    <span class="nback-metric-label">Working Memory Capacity</span>
+                    <span class="nback-metric-value">${results.workingMemoryCapacity.toFixed(2)}</span>
+                </div>
+                <div class="nback-metric">
+                    <span class="nback-metric-label">Average Response Time</span>
+                    <span class="nback-metric-value">${results.averageRT ? results.averageRT.toFixed(0) + 'ms' : 'N/A'}</span>
+                </div>
+            </div>
+            <p style="color: #666; margin-top: 15px;">${advice}</p>
+        </div>
+    `;
+    
+    resultsContainer.classList.add('show');
+    
+    // Show the main test and practice again buttons
+    showNBackMainTestButton();
+}
+
+// ===== ADD THIS CCPT INTEGRATION TO END OF APP.JS =====
+
+// Enhanced CCPT Practice Results Display
+function displayCCPTPracticeResults(results) {
+    const resultsContainer = document.getElementById('ccpt-practice-results');
+    if (!resultsContainer) {
+        console.error('❌ CCPT practice results container not found');
+        return;
+    }
+    
+    let performanceLevel, performanceColor, advice;
+    
+    if (results.accuracy >= 0.8) {
+        performanceLevel = 'Excellent!';
+        performanceColor = '#28a745';
+        advice = 'You\'re ready for the main CCPT test!';
+    } else if (results.accuracy >= 0.6) {
+        performanceLevel = 'Good!';
+        performanceColor = '#ffc107';
+        advice = 'Good work! Remember to only respond to targets.';
+    } else {
+        performanceLevel = 'Keep Practicing';
+        performanceColor = '#dc3545';
+        advice = `Remember: Only press SPACEBAR for "${window.CCPTApp.testConfigurations.ccpt.target}". Ignore other letters.`;
+    }
+    
+    resultsContainer.innerHTML = `
+        <h3>Practice Complete!</h3>
+        <div style="text-align: center;">
+            <div style="font-size: 24px; color: ${performanceColor}; font-weight: bold; margin-bottom: 20px;">
+                ${performanceLevel}
+            </div>
+            <div class="metric" style="margin: 10px 0;">
+                <strong>Accuracy:</strong> ${(results.accuracy * 100).toFixed(1)}%
+            </div>
+            <div class="metric" style="margin: 10px 0;">
+                <strong>Response Time:</strong> ${results.averageRT ? results.averageRT.toFixed(0) + 'ms' : 'N/A'}
+            </div>
+            <p style="color: #666; margin-top: 15px;">${advice}</p>
+        </div>
+    `;
+    
+    resultsContainer.classList.add('show');
+    
+    // Show the main test and practice again buttons
+    showCCPTMainTestButton();
+}
+
+// CCPT Test Engine Setup
+function setupCCPTTestEnvironment() {
+    console.log('🎮 Setting up CCPT test environment...');
+    
+    // Make sure we have the correct stimulus and fixation elements for CCPT
+    const stimulusArea = document.getElementById('ccpt-stimulus-area');
+    if (stimulusArea) {
+        // Set up the stimulus display area for CCPT
+        const fixationElement = document.getElementById('ccpt-fixation');
+        const stimulusElement = document.getElementById('ccpt-stimulus');
+        
+        if (fixationElement && stimulusElement) {
+            console.log('✅ CCPT stimulus elements found');
+        } else {
+            console.warn('⚠️ CCPT stimulus elements not found');
+        }
+    }
+}
+
+// Update the runCCPTPractice function to handle errors better
+async function runCCPTPractice() {
+    console.log('▶️ Running CCPT Practice...');
+    
+    if (!window.CCPTApp.ccptEngine) {
+        console.error('❌ CCPT Engine not initialized');
+        showError('CCPT Engine not ready. Please try again.');
+        return;
+    }
+    
+    try {
+        // Setup test environment first
+        setupCCPTTestEnvironment();
+        
+        // Run the practice
+        const results = await window.CCPTApp.ccptEngine.runPractice();
+        console.log('✅ CCPT Practice completed:', results);
+        
+        // Display results
+        displayCCPTPracticeResults(results);
+        
+    } catch (error) {
+        console.error('❌ CCPT practice failed:', error);
+        showError('CCPT practice failed: ' + error.message);
+    }
+}
+
+// Debug function to check system state
+function debugSystemState() {
+    console.log('🔍 System Debug Info:');
+    console.log('- Auth System:', window.AuthSystem);
+    console.log('- Current User:', window.CCPTApp.currentUser);
+    console.log('- Is Logged In:', window.CCPTApp.isLoggedIn);
+    console.log('- CCPT Engine:', window.CCPTApp.ccptEngine);
+    console.log('- Test Configurations:', window.CCPTApp.testConfigurations);
+    
+    // Test authentication
+    if (window.AuthSystem) {
+        console.log('- Available participants:', Array.from(window.AuthSystem.users.keys()));
+    }
+}
+
+// Call this debug function after login to check everything is working
+window.debugSystemState = debugSystemState;
