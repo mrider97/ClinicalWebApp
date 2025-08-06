@@ -558,45 +558,52 @@
 
         <!-- CCPT PRACTICE SCREEN -->
         <section id="ccpt-practice" class="screen">
-            <div class="container">
-                <header>
-                    <h2>🎯 CCPT Practice Session</h2>
-                    <p>Get familiar with the task before the real test</p>
-                </header>
-                
-                <div class="instructions-box">
-                    <h3>Instructions:</h3>
-                    <ul>
-                        <li>Letters will appear on screen one at a time</li>
-                        <li><strong>Press SPACEBAR</strong> only when you see the target letter: <strong id="ccpt-target-display">X</strong></li>
-                        <li><strong>Do NOT respond</strong> to any other letters</li>
-                        <li>Respond as quickly and accurately as possible</li>
-                        <li>This practice session has 15 trials</li>
-                    </ul>
-                </div>
-                
-                <div class="form-actions text-center">
-                    <button class="btn btn-primary btn-large" onclick="runCCPTPractice()">
-                        ▶️ Start CCPT Practice
-                    </button>
-                </div>
-                
-                <!-- Practice Results -->
-                <div id="ccpt-practice-results" class="practice-results">
-                    <!-- Results populated by JavaScript -->
-                </div>
-                
-                <div class="form-actions text-center" style="margin-top: 30px;">
-                    <button class="btn btn-success btn-large" onclick="runCCPTMainTest()" style="display: none;" id="ccpt-main-test-btn">
-                        🚀 Start Main CCPT Test
-                    </button>
-                    <button class="btn btn-secondary" onclick="runCCPTPractice()" style="display: none;" id="ccpt-practice-again-btn">
-                        🔄 Practice Again
-                    </button>
-                </div>
-            </div>
-        </section>
+    <div class="container">
+        <header>
+            <h2>🎯 CCPT Practice Session</h2>
+            <p>Get familiar with the task before the real test</p>
+        </header>
+        
+        <div class="instructions-box">
+            <h3>Instructions:</h3>
+            <ul>
+                <li>Letters will appear on screen one at a time</li>
+                <li><strong>Press SPACEBAR</strong> only when you see the target letter: <strong id="ccpt-target-display">X</strong></li>
+                <li><strong>Do NOT respond</strong> to any other letters</li>
+                <li>Respond as quickly and accurately as possible</li>
+                <li>This practice session has 15 trials</li>
+            </ul>
+        </div>
+        
+        <div class="form-actions text-center">
+            <button class="btn btn-primary btn-large" onclick="runCCPTPractice()">
+                ▶️ Start CCPT Practice
+            </button>
+        </div>
+        
+        <!-- ADD THIS STIMULUS AREA FOR PRACTICE -->
+        <div class="stimulus-area" id="ccpt-practice-stimulus-area" style="display: none;">
+            <div class="fixation" id="ccpt-fixation">+</div>
+            <div class="stimulus" id="ccpt-stimulus"></div>
+        </div>
+        
+        <!-- Practice Results -->
+        <div id="ccpt-practice-results" class="practice-results">
+            <!-- Results populated by JavaScript -->
+        </div>
+        
+        <div class="form-actions text-center" style="margin-top: 30px;">
+            <button class="btn btn-success btn-large" onclick="runCCPTMainTest()" style="display: none;" id="ccpt-main-test-btn">
+                🚀 Start Main CCPT Test
+            </button>
+            <button class="btn btn-secondary" onclick="runCCPTPractice()" style="display: none;" id="ccpt-practice-again-btn">
+                🔄 Practice Again
+            </button>
+        </div>
+    </div>
+</section>
 
+        <!-- CCPT TEST SCREEN -->
         <!-- CCPT TEST SCREEN -->
         <section id="ccpt-test" class="screen">
             <div class="test-container">

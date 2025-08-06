@@ -140,32 +140,48 @@ class CCPTTestEngine {
     }
     
     // ===== ENVIRONMENT MANAGEMENT =====
-    setupTestEnvironment() {
-        // Get DOM elements
-        this.stimulusElement = document.getElementById('stimulus');
-        this.fixationElement = document.getElementById('fixation');
-        this.testOverlay = document.getElementById('test-overlay');
-        
-        if (!this.stimulusElement || !this.fixationElement) {
-            throw new Error('Required DOM elements not found');
-        }
-        
-        // Set up global response handler
-        this.setupGlobalResponseHandler();
-        
-        // Prevent context menu
-        const preventContext = (e) => {
-            e.preventDefault();
-            return false;
-        };
-        document.addEventListener('contextmenu', preventContext);
-        this.activeEventListeners.add({ type: 'contextmenu', handler: preventContext });
-        
-        // Add test mode styling
-        document.body.classList.add('test-mode');
-        
-        console.log('🎮 Test environment set up');
+
+
+// ===== REPLACE setupTestEnvironment() METHOD IN ccpt-test.js =====
+
+setupTestEnvironment() {
+    console.log('🎮 Setting up CCPT test environment...');
+    
+    // Try to get CCPT-specific elements first, then fall back to generic ones
+    this.stimulusElement = document.getElementById('ccpt-stimulus') || document.getElementById('stimulus');
+    this.fixationElement = document.getElementById('ccpt-fixation') || document.getElementById('fixation');
+    this.testOverlay = document.getElementById('ccpt-test-overlay') || document.getElementById('test-overlay');
+    
+    console.log('🔍 DOM Elements found:');
+    console.log('- Stimulus element:', this.stimulusElement ? '✅' : '❌', this.stimulusElement);
+    console.log('- Fixation element:', this.fixationElement ? '✅' : '❌', this.fixationElement);
+    console.log('- Test overlay:', this.testOverlay ? '✅' : '❌', this.testOverlay);
+    
+    if (!this.stimulusElement || !this.fixationElement) {
+        console.error('❌ Missing required DOM elements');
+        console.log('Available elements with "stimulus" in ID:', 
+            Array.from(document.querySelectorAll('[id*="stimulus"]')).map(el => el.id));
+        console.log('Available elements with "fixation" in ID:', 
+            Array.from(document.querySelectorAll('[id*="fixation"]')).map(el => el.id));
+        throw new Error('Required DOM elements not found. Make sure you are on the correct screen.');
     }
+    
+    // Set up global response handler
+    this.setupGlobalResponseHandler();
+    
+    // Prevent context menu during test
+    const preventContext = (e) => {
+        e.preventDefault();
+        return false;
+    };
+    document.addEventListener('contextmenu', preventContext);
+    this.activeEventListeners.add({ type: 'contextmenu', handler: preventContext });
+    
+    // Add test mode styling
+    document.body.classList.add('test-mode');
+    
+    console.log('✅ Test environment set up successfully');
+}
     
     setupGlobalResponseHandler() {
         // Note: This is just for cleanup tracking

@@ -1282,3 +1282,202 @@ kbd {
 .screen.active {
     display: block;
 }
+
+/* ===== ADD THIS CSS TO THE END OF YOUR styles.css =====*/
+
+/* CCPT Stimulus Display */
+.stimulus-area {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 300px;
+    position: relative;
+    background: #f8f9fa;
+    border-radius: 15px;
+    margin: 20px 0;
+}
+
+.fixation {
+    font-size: 60px;
+    color: #333;
+    font-weight: bold;
+    position: absolute;
+    opacity: 0;
+    transition: opacity 0.1s ease;
+}
+
+.fixation.show {
+    opacity: 1;
+}
+
+.stimulus {
+    font-size: 80px;
+    color: #333;
+    font-weight: bold;
+    font-family: 'Courier New', monospace;
+    position: absolute;
+    opacity: 0;
+    transition: opacity 0.1s ease;
+}
+
+.stimulus.show {
+    opacity: 1;
+}
+
+.stimulus.target {
+    color: #dc3545; /* Red for target letters */
+}
+
+/* Test overlay styles */
+.test-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    transition: opacity 0.3s ease;
+}
+
+.test-overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.test-info {
+    text-align: center;
+    color: white;
+}
+
+.test-info div {
+    margin: 10px 0;
+    font-size: 24px;
+}
+
+.test-reminder {
+    font-size: 18px;
+    color: #ccc;
+}
+
+/* Test mode styling */
+body.test-mode {
+    overflow: hidden; /* Prevent scrolling during test */
+}
+
+body.test-mode * {
+    -webkit-user-select: none; /* Prevent text selection during test */
+}
+
+/* ===== ADD THIS CSS TO THE END OF YOUR styles.css =====*/
+
+/* CCPT Stimulus Display */
+.stimulus-area {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 300px;
+    position: relative;
+    background: #f8f9fa;
+    border-radius: 15px;
+    margin: 20px 0;
+    border: 2px solid #e9ecef;
+}
+
+.fixation {
+    font-size: 60px;
+    color: #333;
+    font-weight: bold;
+    position: absolute;
+    opacity: 0;
+    transition: opacity 0.1s ease;
+    font-family: 'Courier New', monospace;
+}
+
+.fixation.show {
+    opacity: 1;
+}
+
+.stimulus {
+    font-size: 80px;
+    color: #333;
+    font-weight: bold;
+    font-family: 'Courier New', monospace;
+    position: absolute;
+    opacity: 0;
+    transition: opacity 0.1s ease;
+}
+
+.stimulus.show {
+    opacity: 1;
+}
+
+.stimulus.target {
+    color: #dc3545; /* Red for target letters */
+    font-weight: 900;
+}
+
+/* Test overlay styles */
+.test-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.9);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    transition: opacity 0.3s ease;
+}
+
+.test-overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.test-info {
+    text-align: center;
+    color: white;
+}
+
+.test-info div {
+    margin: 15px 0;
+    font-size: 28px;
+    font-weight: 600;
+}
+
+.test-reminder {
+    font-size: 18px !important;
+    color: #ccc !important;
+    font-weight: 400 !important;
+}
+
+/* Test mode styling */
+body.test-mode {
+    overflow: hidden;
+    cursor: none;
+}
+
+body.test-mode * {
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
+
+/* Practice results animation */
+.practice-results {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.3s ease;
+}
+
+.practice-results.show {
+    opacity: 1;
+    transform: translateY(0);
+}
