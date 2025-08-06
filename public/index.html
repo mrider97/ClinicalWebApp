@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CCPT Test Application</title>
+    
+    <!-- Prevent browser features that could interfere with test -->
+    <meta name="robots" content="noindex, nofollow">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="/css/styles.css">
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="loading-screen">
+        <div class="spinner"></div>
+        <p>Loading CCPT Test...</p>
+    </div>
+    
+    <!-- Navigation Warning Modal -->
+    <div id="navigation-warning-modal" class="modal">
+        <div class="modal-content">
+            <h3>⚠️ Test In Progress</h3>
+            <p>Navigation is disabled during the test to preserve data integrity.</p>
+            <button class="btn" onclick="closeModal()">Continue Test</button>
+        </div>
+    </div>
+    
+    <!-- Test Progress Warning -->
+    <div id="test-progress-warning" class="test-warning">
+        ⚠️ Test in progress - Please do not navigate away
+    </div>
+    
+    <!-- Navigation Controls -->
+    <nav id="nav-controls" class="nav-controls">
+        <button id="home-btn" class="nav-btn" onclick="goHome()">🏠 Home</button>
+        <button id="admin-btn" class="nav-btn" onclick="goToAdmin()">⚙️ Admin</button>
+    </nav>
+    
+    <!-- MAIN CONTENT CONTAINER -->
+    <main id="app-container">
+        
+        <!-- HOME SCREEN -->
+        <section id="home-screen" class="screen active">
+            <div class="container">
+                <header class="welcome-header">
+                    <h1>CCPT Test Application</h1>
+                    <p class="subtitle">Continuous Performance Test - Web Version</p>
+                </header>
+                
+                <div class="action-buttons">
+                    <button class="btn btn-primary btn-large" onclick="startNewTest()">
+                        🚀 Start New Test Session
+                    </button>
+                </div>
+                
+                <div class="info-section">
+                    <h3>Before You Begin:</h3>
+                    <ul class="checklist">
+                        <li>✓ Participant is ready for testing</li>
+                        <li>✓ Environment is quiet and distraction-free</li>
+                        <li>✓ Device is functioning properly</li>
+                        <li>✓ Participant consent obtained (if required)</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+        
+        <!-- CONFIGURATION SCREEN -->
+        <section id="config-screen" class="screen">
+            <div class="container">
+                <header>
+                    <h2>Test Configuration</h2>
+                    <p>Set up the test parameters</p>
+                </header>
+                
+                <form id="config-form" class="config-form">
+                    <!-- Participant Info -->
+                    <div class="form-section">
+                        <h3>👤 Participant Information</h3>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="participant-id">Participant ID *</label>
+                                <input type="text" id="participant-id" name="participantId" required 
+                                       placeholder="Enter unique ID">
+                            </div>
+                            <div class="form-group">
+                                <label for="age">Age</label>
+                                <input type="number" id="age" name="age" min="1" max="120" 
+                                       placeholder="Optional">
+                            </div>
+                            <div class="form-group">
+                                <label for="gender">Gender</label>
+                                <select id="gender" name="gender">
+                                    <option value="prefer-not-to-say">Prefer not to say</option>
+                                    <option value="male">Male</option>
+                                    <option value="female">Female</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="condition">Condition</label>
+                                <select id="condition" name="condition">
+                                    <option value="control">Control</option>
+                                    <option value="experimental">Experimental</option>
+                                    <option value="placebo">Placebo</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Test Parameters -->
+                    <div class="form-section">
+                        <h3>⚙️ Test Parameters</h3>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="duration">Duration (minutes)</label>
+                                <select id="duration" name="duration">
+                                    <option value="2">2 minutes (Demo)</option>
+                                    <option value="5" selected>5 minutes (Standard)</option>
+                                    <option value="10">10 minutes (Extended)</option>
+                                    <option value="15">15 minutes (Full)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="stimulus-duration">Stimulus Duration (ms)</label>
+                                <input type="number" id="stimulus-duration" name="stimulusDuration" 
+                                       min="50" max="5000" step="50" value="250" 
+                                       placeholder="e.g., 250">
+                                <small class="form-help">Range: 50-5000ms</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="isi-duration">Inter-Stimulus Interval (sec)</label>
+                                <input type="number" id="isi-duration" name="isiDuration" 
+                                       min="0.5" max="10" step="0.1" value="1.5" 
+                                       placeholder="e.g., 1.5">
+                                <small class="form-help">Range: 0.5-10.0 seconds</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="target-probability">Target Probability (%)</label>
+                                <select id="target-probability" name="targetProbability">
+                                    <option value="5">5% (Very Rare)</option>
+                                    <option value="10" selected>10% (Standard)</option>
+                                    <option value="15">15% (Frequent)</option>
+                                    <option value="20">20% (Very Frequent)</option>
+                                </select>
+                            </div>
+                            <div class="timing-preview" id="timing-preview">
+                                <h4>⏱️ Timing Preview</h4>
+                                <div id="timing-details">
+                                    <p><strong>Trial Duration:</strong> <span id="trial-duration">1.75s</span></p>
+                                    <p><strong>Trials per minute:</strong> <span id="trials-per-minute">34.3</span></p>
+                                    <p><strong>Estimated targets per minute:</strong> <span id="targets-per-minute">3.4</span></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Stimulus Settings -->
+                    <div class="form-section">
+                        <h3>🎯 Stimulus Settings</h3>
+                        <div class="form-group">
+                            <label for="stimulus-type">Stimulus Type</label>
+                            <select id="stimulus-type" name="stimulusType" onchange="updateStimulusPreview()">
+                                <option value="letters" selected>Letters (A, B, C... Target: X)</option>
+                                <option value="numbers">Numbers (0, 1, 2... Target: 7)</option>
+                                <option value="shapes">Shapes (●, □, △... Target: ●)</option>
+                            </select>
+                        </div>
+                        <div class="stimulus-preview" id="stimulus-preview">
+                            <div class="preview-item">Target: <span class="target-preview">X</span></div>
+                            <div class="preview-item">Non-targets: <span class="nontarget-preview">A, B, C, D...</span></div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" onclick="goHome()">
+                            Cancel
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            Save & Continue to Practice
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </section>
+        
+        <!-- PRACTICE SCREEN -->
+        <section id="practice-screen" class="screen">
+            <div class="container text-center">
+                <header>
+                    <h2>Practice Session</h2>
+                    <p>Let's practice before the main test!</p>
+                </header>
+                
+                <div class="instructions-box">
+                    <h3>📋 Instructions</h3>
+                    <div id="practice-instructions">
+                        <p><strong>Your Task:</strong></p>
+                        <p>Press the <kbd>SPACEBAR</kbd> when you see the target stimulus: <span id="target-display" class="target-highlight">X</span></p>
+                        <p><strong>Ignore</strong> all other stimuli</p>
+                        <p>Respond as <strong>quickly</strong> and <strong>accurately</strong> as possible</p>
+                    </div>
+                </div>
+                
+                <div class="action-buttons">
+                    <button id="start-practice-btn" class="btn btn-primary btn-large" onclick="startPractice()">
+                        🎯 Start Practice (15 trials)
+                    </button>
+                </div>
+                
+                <div class="practice-results" id="practice-results">
+                    <h3>Practice Complete!</h3>
+                    <div id="practice-summary"></div>
+                    <div class="action-buttons">
+                        <button class="btn btn-primary btn-large" onclick="startMainTest()">
+                            ✅ Continue to Main Test
+                        </button>
+                        <button class="btn btn-secondary" onclick="startPractice()">
+                            🔄 Practice Again
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="form-actions">
+                    <button class="btn btn-secondary" onclick="goToConfig()">
+                        ← Back to Configuration
+                    </button>
+                </div>
+            </div>
+        </section>
+        
+        <!-- TEST SCREEN -->
+        <section id="test-screen" class="screen">
+            <div class="test-container">
+                <div class="test-overlay" id="test-overlay">
+                    <div class="test-info">
+                        <div id="test-progress">Test starting...</div>
+                        <div class="test-reminder">Press SPACEBAR for targets only</div>
+                    </div>
+                </div>
+                
+                <div class="stimulus-area" id="stimulus-area">
+                    <div class="fixation" id="fixation">+</div>
+                    <div class="stimulus" id="stimulus"></div>
+                </div>
+                
+                <div class="test-controls" id="test-controls">                    <button class="btn btn-danger" onclick="confirmQuitTest()">
+                        ⏹️ End Test Early
+                    </button>
+                </div>
+            </div>
+        </section>
+        
+        <!-- RESULTS SCREEN -->
+        <section id="results-screen" class="screen">
+            <div class="container">
+                <header class="text-center">
+                    <h2>🎉 Test Completed!</h2>
+                    <p>Thank you for your participation</p>
+                </header>
+                
+                <div class="results-container" id="results-container">
+                    <!-- Results will be populated by JavaScript -->
+                </div>
+                
+                <div class="form-actions text-center">
+                    <button class="btn btn-primary" onclick="downloadResults()">
+                        💾 Download Results
+                    </button>
+                    <button class="btn btn-secondary" onclick="startNewTest()">
+                        🔄 New Test
+                    </button>
+                    <button class="btn btn-secondary" onclick="goHome()">
+                        🏠 Home
+                    </button>
+                </div>
+            </div>
+        </section>
+        
+        <!-- ADMIN SCREEN -->
+        <section id="admin-screen" class="screen">
+            <div class="container">
+                <header>
+                    <h2>🔧 Administrator Panel</h2>
+                    <p>Researcher tools and data management</p>
+                </header>
+                
+                <div class="admin-grid">
+                    <div class="admin-card">
+                        <h3>📊 Data Export</h3>
+                        <p>Export test data for analysis</p>
+                        <button class="btn btn-primary" onclick="exportAllData()">
+                            Export All Data
+                        </button>
+                        <button class="btn btn-secondary" onclick="exportRecentData()">
+                            Export Recent (7 days)
+                        </button>
+                    </div>
+                    
+                    <div class="admin-card">
+                        <h3>📈 Statistics</h3>
+                        <div id="admin-stats">
+                            <p>Loading statistics...</p>
+                        </div>
+                    </div>
+                    
+                    <div class="admin-card">
+                        <h3>⚙️ System</h3>
+                        <button class="btn btn-secondary" onclick="clearCache()">
+                            Clear Cache
+                        </button>
+                        <button class="btn btn-secondary" onclick="showSystemInfo()">
+                            System Info
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="form-actions">
+                    <button class="btn btn-secondary" onclick="goHome()">
+                        ← Back to Home
+                    </button>
+                </div>
+            </div>
+        </section>
+        
+    </main>
+    
+    <!-- Scripts -->
+    <script src="/js/app.js"></script>
+    <script src="/js/ccpt-test.js"></script>
+    
+    <script>
+        // Initialize app when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeApp();
+        });
+    </script>
+</body>
+</html> 
