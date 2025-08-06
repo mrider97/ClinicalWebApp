@@ -45,9 +45,59 @@
     
     <!-- MAIN CONTENT CONTAINER -->
     <main id="app-container">
-        
+    <!-- LOGIN SCREEN -->
+        <section id="login-screen" class="screen active">
+            <div class="container">
+                <header class="welcome-header">
+                    <h1>Clinical Trial Study</h1>
+                    <p class="subtitle">Working Memory Assessment Platform</p>
+                </header>
+                
+                <div class="login-form-container">
+                    <form id="login-form" class="login-form">
+                        <div class="form-group">
+                            <label for="participant-number">Participant Number</label>
+                            <input 
+                                type="text" 
+                                id="participant-number" 
+                                name="participantNumber" 
+                                required 
+                                placeholder="Enter your participant number"
+                                autocomplete="username"
+                            >
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="pin">PIN</label>
+                            <input 
+                                type="password" 
+                                id="pin" 
+                                name="pin" 
+                                required 
+                                placeholder="Enter your 4-digit PIN"
+                                maxlength="4"
+                                pattern="[0-9]{4}"
+                                autocomplete="current-password"
+                            >
+                        </div>
+                        
+                        <div id="login-error" class="error-message" style="display: none;"></div>
+                        
+                        <button type="submit" class="btn btn-primary btn-large">
+                            🔑 Login
+                        </button>
+                    </form>
+                    
+                    <div class="login-help">
+                        <p><strong>Need help?</strong></p>
+                        <p>Contact the researcher if you've forgotten your participant number or PIN.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <!-- HOME SCREEN -->
-        <section id="home-screen" class="screen active">
+        <section id="home-screen" class="screen">
             <div class="container">
                 <header class="welcome-header">
                     <h1>CCPT Test Application</h1>
@@ -329,12 +379,332 @@
                 </div>
             </div>
         </section>
-        
+        <!-- TEST FUNNEL SCREEN -->
+        <section id="test-funnel" class="screen">
+            <div class="container">
+                <header>
+                    <h2>🧪 Test Session</h2>
+                    <p>Complete both tests to finish your session</p>
+                </header>
+                
+                <div class="test-funnel-container">
+                    <!-- Progress Bar -->
+                    <div class="test-progress-bar">
+                        <div class="test-progress-fill" style="width: 0%;"></div>
+                    </div>
+                    
+                    <!-- CCPT Test Card -->
+                    <div id="ccpt-card" class="test-card">
+                        <h3>🎯 Continuous Performance Test (CCPT)</h3>
+                        <div class="test-description">
+                            Measures sustained attention and response inhibition. 
+                            You'll respond to target letters while ignoring distractors.
+                        </div>
+                        <div class="test-duration">⏱️ Duration: ~5-8 minutes</div>
+                        <div class="test-status pending">Pending</div>
+                    </div>
+                    
+                    <!-- N-Back Test Card -->
+                    <div id="nback-card" class="test-card">
+                        <h3>🧠 N-Back Working Memory Test</h3>
+                        <div class="test-description">
+                            Measures working memory capacity. You'll identify when positions 
+                            match those from N steps back.
+                        </div>
+                        <div class="test-duration">⏱️ Duration: ~5-7 minutes</div>
+                        <div class="test-status pending">Pending</div>
+                    </div>
+                    
+                    <!-- Action Buttons -->
+                    <div class="form-actions text-center">
+                        <button id="continue-test-btn" class="btn btn-primary btn-large" onclick="startNextTest()">
+                            Start First Test
+                        </button>
+                        <button id="view-results-btn" class="btn btn-success btn-large" onclick="showScreen('final-results')" style="display: none;">
+                            View Final Results
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ADMIN DASHBOARD -->
+        <section id="admin-dashboard" class="screen">
+            <div class="container">
+                <header>
+                    <h2>🔧 Administrator Dashboard</h2>
+                    <p>Manage participants and configure tests</p>
+                </header>
+                
+                <!-- Participant Management -->
+                <div class="admin-config-section">
+                    <h3>👥 Participant Management</h3>
+                    
+                    <div class="form-grid">
+                        <div>
+                            <h4>Add New Participant</h4>
+                            <form id="add-participant-form">
+                                <div class="form-group">
+                                    <label for="new-participant-number">Participant Number</label>
+                                    <input type="text" id="new-participant-number" name="participantNumber" required placeholder="e.g., P003">
+                                </div>
+                                <div class="form-group">
+                                    <label for="new-participant-pin">PIN (4 digits)</label>
+                                    <input type="password" id="new-participant-pin" name="pin" required maxlength="4" pattern="[0-9]{4}" placeholder="0000">
+                                </div>
+                                <div class="form-group">
+                                    <label for="study-group">Study Group</label>
+                                    <select id="study-group" name="studyGroup" required>
+                                        <option value="control">Control</option>
+                                        <option value="treatment">Treatment</option>
+                                        <option value="placebo">Placebo</option>
+                                    </select>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Add Participant</button>
+                            </form>
+                        </div>
+                        
+                        <div>
+                            <h4>Current Participants</h4>
+                            <div id="participant-list" class="participant-list">
+                                <!-- Populated by JavaScript -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Test Configuration -->
+                <div class="admin-config-section">
+                    <h3>⚙️ Test Configuration</h3>
+                    
+                    <div class="test-config-grid">
+                        <!-- CCPT Configuration -->
+                        <div class="config-card">
+                            <h4>🎯 CCPT Settings</h4>
+                            <form id="ccpt-config-form">
+                                <div class="form-group">
+                                    <label for="ccpt-duration">Duration (minutes)</label>
+                                    <input type="number" id="ccpt-duration" name="duration" min="1" max="30" step="0.5" value="5">
+                                </div>
+                                <div class="form-group">
+                                    <label for="ccpt-stimulus-duration">Stimulus Duration (ms)</label>
+                                    <input type="number" id="ccpt-stimulus-duration" name="stimulusDuration" min="50" max="1000" value="250">
+                                </div>
+                                <div class="form-group">
+                                    <label for="ccpt-isi-duration">ISI Duration (ms)</label>
+                                    <input type="number" id="ccpt-isi-duration" name="isiDuration" min="500" max="3000" value="1500">
+                                </div>
+                                <div class="form-group">
+                                    <label for="ccpt-target">Target Letter</label>
+                                    <input type="text" id="ccpt-target" name="target" maxlength="1" value="X">
+                                </div>
+                                <div class="form-group">
+                                    <label for="ccpt-target-prob">Target Probability</label>
+                                    <input type="number" id="ccpt-target-prob" name="targetProbability" min="0.05" max="0.5" step="0.05" value="0.1">
+                                </div>
+                                <button type="submit" class="btn btn-primary">Update CCPT</button>
+                            </form>
+                        </div>
+                        
+                        <!-- N-Back Configuration -->
+                        <div class="config-card">
+                            <h4>🧠 N-Back Settings</h4>
+                            <form id="nback-config-form">
+                                <div class="form-group">
+                                    <label for="nback-n-level">N-Level</label>
+                                    <select id="nback-n-level" name="nLevel">
+                                        <option value="1">1-Back</option>
+                                        <option value="2" selected>2-Back</option>
+                                        <option value="3">3-Back</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="nback-total-trials">Total Trials</label>
+                                    <input type="number" id="nback-total-trials" name="totalTrials" min="20" max="100" value="40">
+                                </div>
+                                <div class="form-group">
+                                    <label for="nback-stimulus-duration">Stimulus Duration (ms)</label>
+                                    <input type="number" id="nback-stimulus-duration" name="stimulusDuration" min="200" max="1000" value="500">
+                                </div>
+                                <div class="form-group">
+                                    <label for="nback-isi-duration">ISI Duration (ms)</label>
+                                    <input type="number" id="nback-isi-duration" name="isiDuration" min="1000" max="4000" value="2500">
+                                </div>
+                                <div class="form-group">
+                                    <label for="nback-target-prob">Target Probability</label>
+                                    <input type="number" id="nback-target-prob" name="targetProbability" min="0.2" max="0.5" step="0.1" value="0.3">
+                                </div>
+                                <button type="submit" class="btn btn-primary">Update N-Back</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Session Statistics -->
+                <div class="admin-config-section">
+                    <h3>📈 Session Statistics</h3>
+                    <div id="session-statistics">
+                        Loading statistics...
+                    </div>
+                </div>
+                
+                <div class="form-actions">
+                    <button class="btn btn-secondary" onclick="logout()">
+                        👋 Logout
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- CCPT PRACTICE SCREEN -->
+        <section id="ccpt-practice" class="screen">
+            <div class="container">
+                <header>
+                    <h2>🎯 CCPT Practice Session</h2>
+                    <p>Get familiar with the task before the real test</p>
+                </header>
+                
+                <div class="instructions-box">
+                    <h3>Instructions:</h3>
+                    <ul>
+                        <li>Letters will appear on screen one at a time</li>
+                        <li><strong>Press SPACEBAR</strong> only when you see the target letter: <strong id="ccpt-target-display">X</strong></li>
+                        <li><strong>Do NOT respond</strong> to any other letters</li>
+                        <li>Respond as quickly and accurately as possible</li>
+                        <li>This practice session has 15 trials</li>
+                    </ul>
+                </div>
+                
+                <div class="form-actions text-center">
+                    <button class="btn btn-primary btn-large" onclick="runCCPTPractice()">
+                        ▶️ Start CCPT Practice
+                    </button>
+                </div>
+                
+                <!-- Practice Results -->
+                <div id="ccpt-practice-results" class="practice-results">
+                    <!-- Results populated by JavaScript -->
+                </div>
+                
+                <div class="form-actions text-center" style="margin-top: 30px;">
+                    <button class="btn btn-success btn-large" onclick="runCCPTMainTest()" style="display: none;" id="ccpt-main-test-btn">
+                        🚀 Start Main CCPT Test
+                    </button>
+                    <button class="btn btn-secondary" onclick="runCCPTPractice()" style="display: none;" id="ccpt-practice-again-btn">
+                        🔄 Practice Again
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- CCPT TEST SCREEN -->
+        <section id="ccpt-test" class="screen">
+            <div class="test-container">
+                <div class="test-overlay" id="ccpt-test-overlay">
+                    <div class="test-info">
+                        <div id="ccpt-test-progress">CCPT Test starting...</div>
+                        <div class="test-reminder">Press SPACEBAR for target letters only</div>
+                    </div>
+                </div>
+                
+                <div class="stimulus-area" id="ccpt-stimulus-area">
+                    <div class="fixation" id="ccpt-fixation">+</div>
+                    <div class="stimulus" id="ccpt-stimulus"></div>
+                </div>
+                
+                <div class="test-controls">
+                    <button class="btn btn-danger" onclick="endTestEarly()">
+                        ⏹️ End Test Early
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- N-BACK PRACTICE SCREEN -->
+        <section id="nback-practice" class="screen">
+            <div class="container">
+                <header>
+                    <h2>🧠 N-Back Practice Session</h2>
+                    <p>Learn the working memory task</p>
+                </header>
+                
+                <div class="instructions-box">
+                    <h3>Instructions:</h3>
+                    <ul>
+                        <li>You'll see squares light up in a 3×3 grid</li>
+                        <li><strong>Press SPACEBAR</strong> when the current position matches the position from <strong id="nback-level-display">2</strong> steps back</li>
+                        <li>For example: if position 1 lights up, then 2 trials later position 1 lights up again, press SPACEBAR</li>
+                        <li>Focus on remembering the sequence of positions</li>
+                        <li>This practice session has 10 trials</li>
+                    </ul>
+                </div>
+                
+                <div class="form-actions text-center">
+                    <button class="btn btn-primary btn-large" onclick="runNBackPractice()">
+                        ▶️ Start N-Back Practice
+                    </button>
+                </div>
+                
+                <!-- Practice Results -->
+                <div id="nback-practice-results" class="nback-practice-results">
+                    <!-- Results populated by JavaScript -->
+                </div>
+                
+                <div class="form-actions text-center" style="margin-top: 30px;">
+                    <button class="btn btn-success btn-large" onclick="runNBackMainTest()" style="display: none;" id="nback-main-test-btn">
+                        🚀 Start Main N-Back Test
+                    </button>
+                    <button class="btn btn-secondary" onclick="runNBackPractice()" style="display: none;" id="nback-practice-again-btn">
+                        🔄 Practice Again
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- N-BACK TEST SCREEN -->
+        <section id="nback-test" class="screen">
+            <div class="nback-test-container">
+                <div id="nback-test-area">
+                    <!-- N-Back grid and controls will be populated by JavaScript -->
+                </div>
+                
+                <div class="test-controls">
+                    <button class="btn btn-danger" onclick="endTestEarly()">
+                        ⏹️ End Test Early
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- FINAL RESULTS SCREEN -->
+        <section id="final-results" class="screen">
+            <div class="container">
+                <header class="text-center">
+                    <h2>🎉 Session Complete!</h2>
+                    <p>Thank you for completing both tests</p>
+                </header>
+                
+                <div id="final-results-container" class="results-container">
+                    <!-- Final results populated by JavaScript -->
+                </div>
+                
+                <div class="form-actions text-center">
+                    <button class="btn btn-primary" onclick="downloadAllResults()">
+                        💾 Download Complete Results
+                    </button>
+                    <button class="btn btn-secondary" onclick="logout()">
+                        👋 End Session
+                    </button>
+                </div>
+            </div>
+        </section>
     </main>
     
     <!-- Scripts -->
     <script src="/js/app.js"></script>
     <script src="/js/ccpt-test.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/nback-test.js"></script>
     
     <script>
         // Initialize app when DOM is loaded

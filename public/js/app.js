@@ -1,89 +1,352 @@
+// ===== UPDATED APP.JS WITH LOGIN & TEST FUNNEL =====
+// Replace the existing app.js with this updated version
+
 // ===== GLOBAL APPLICATION STATE =====
 window.CCPTApp = {
-    // Current screen and state
-    currentScreen: 'home-screen',
-    isTestInProgress: false,
-    config: null,
-    practiceResults: null,
-    testResults: null,
+    // Authentication state
+    currentUser: null,
+    isLoggedIn: false,
     
-    // Firebase connection (will be initialized later)
+    // Test flow state
+    currentScreen: 'login-screen',
+    testFunnelProgress: {
+        ccpt: { completed: false, results: null },
+        nback: { completed: false, results: null }
+    },
+    
+    // Test configurations (admin-controlled)
+    testConfigurations: {
+        ccpt: {
+            duration: 5, // minutes
+            stimulusDuration: 250, // ms
+            isiDuration: 1500, // ms
+            target: 'X',
+            nonTargets: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'],
+            targetProbability: 0.1
+        },
+        nback: {
+            nLevel: 2,
+            gridSize: 3,
+            stimulusDuration: 500, // ms
+            isiDuration: 2500, // ms
+            totalTrials: 40,
+            practiceTrials: 10,
+            targetProbability: 0.3
+        }
+    },
+    
+    // Test engines
+    ccptEngine: null,
+    nbackEngine: null,
+    
+    // Data storage
     db: null,
     
-    // Test instance
-    testEngine: null
+    // UI state
+    isTestInProgress: false
 };
 
 // ===== INITIALIZATION =====
 function initializeApp() {
-    console.log('🚀 Initializing CCPT Application...');
+    console.log('🚀 Initializing Clinical Trial Application...');
     
     // Hide loading screen
     hideLoadingScreen();
     
+    // Initialize Firebase
+    initializeFirebase();
+    
     // Set up event listeners
     setupEventListeners();
     
-    // Initialize Firebase (you'll need to add your config)
-    initializeFirebase();
+    // Show login screen
+    showScreen('login-screen');
     
-    // Show home screen
-    showScreen('home-screen');
-    
-    // Set up keyboard shortcuts (for development)
-    setupKeyboardShortcuts();
-    
-    console.log('✅ CCPT Application initialized successfully');
+    console.log('✅ Application initialized successfully');
 }
 
-// ===== FIREBASE INITIALIZATION =====
 function initializeFirebase() {
-    // TODO: Replace with your Firebase configuration
-// Your actual Firebase configuration
-const firebaseConfig = {
-    apiKey: "AIzaSyCstQjKap6OjGV4_KNWoPW8eG1eWJt9J0E",
-    authDomain: "ccpt-test-f3da0.firebaseapp.com",
-    projectId: "ccpt-test-f3da0",
-    storageBucket: "ccpt-test-f3da0.firebasestorage.app",
-    messagingSenderId: "501214918316",
-    appId: "1:501214918316:web:b0534507f678d9e804d109"
-    // Note: We're not using measurementId/analytics for this app
-};
+    // Your Firebase configuration
+    const firebaseConfig = {
+        apiKey: "AIzaSyCstQjKap6OjGV4_KNWoPW8eG1eWJt9J0E",
+        authDomain: "ccpt-test-f3da0.firebaseapp.com",
+        projectId: "ccpt-test-f3da0",
+        storageBucket: "ccpt-test-f3da0.firebasestorage.app",
+        messagingSenderId: "501214918316",
+        appId: "1:501214918316:web:b0534507f678d9e804d109"
+    };
     
     try {
-        // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         window.CCPTApp.db = firebase.firestore();
         console.log('✅ Firebase initialized successfully');
     } catch (error) {
-        console.warn('⚠️ Firebase initialization failed:', error);
-        // App can still work without Firebase for testing
+        console.error('❌ Firebase initialization failed:', error);
     }
 }
 
-// ===== SCREEN MANAGEMENT =====
-function showScreen(screenId) {
-    console.log(`📱 Switching to screen: ${screenId}`);
-    
-    // ENHANCED: Stop ANY running session (practice or main test)
-    if (window.CCPTApp.testEngine && window.CCPTApp.testEngine.isAnySessionRunning()) {
-        console.log('⏹️ Stopping running session due to screen change');
-        window.CCPTApp.testEngine.stop();
-        window.CCPTApp.isTestInProgress = false;
-        
-        // Clear any practice-specific state
-        const practiceResults = document.getElementById('practice-results');
-        if (practiceResults) {
-            practiceResults.classList.remove('show');
-        }
-        
-        // Re-enable practice start button
-        const startBtn = document.getElementById('start-practice-btn');
-        if (startBtn) {
-            startBtn.disabled = false;
-            startBtn.textContent = '🎯 Start Practice (15 trials)';
-        }
+// ===== AUTHENTICATION FLOW =====
+function setupEventListeners() {
+    // Login form
+    const loginForm = document.getElementById('login-form');
+    if (loginForm) {
+        loginForm.addEventListener('submit', handleLogin);
     }
+    
+    // Admin participant management
+    const addParticipantForm = document.getElementById('add-participant-form');
+    if (addParticipantForm) {
+        addParticipantForm.addEventListener('submit', handleAddParticipant);
+    }
+    
+    // Test configuration forms
+    const ccptConfigForm = document.getElementById('ccpt-config-form');
+    if (ccptConfigForm) {
+        ccptConfigForm.addEventListener('submit', handleCCPTConfigUpdate);
+    }
+    
+    const nbackConfigForm = document.getElementById('nback-config-form');
+    if (nbackConfigForm) {
+        nbackConfigForm.addEventListener('submit', handleNBackConfigUpdate);
+    }
+    
+    // Global keypress handling
+    document.addEventListener('keydown', handleGlobalKeypress);
+    
+    // Prevent navigation during tests
+    window.addEventListener('beforeunload', (e) => {
+        if (window.CCPTApp.isTestInProgress) {
+            e.preventDefault();
+            e.returnValue = 'Test in progress. Are you sure you want to leave?';
+            return e.returnValue;
+        }
+    });
+}
+
+async function handleLogin(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(e.target);
+    const participantNumber = formData.get('participantNumber').trim();
+    const pin = formData.get('pin').trim();
+    
+    const errorElement = document.getElementById('login-error');
+    
+    try {
+        // Authenticate user
+        const user = await window.AuthSystem.authenticate(participantNumber, pin);
+        
+        // Store current user
+        window.CCPTApp.currentUser = user;
+        window.CCPTApp.isLoggedIn = true;
+        
+        // Show user info
+        displayUserInfo();
+        
+        // Navigate based on user type
+        if (window.AuthSystem.isAdmin()) {
+            showScreen('admin-dashboard');
+        } else {
+            showScreen('test-funnel');
+        }
+        
+        // Hide error
+        errorElement.style.display = 'none';
+        
+    } catch (error) {
+        console.error('❌ Login failed:', error);
+        errorElement.textContent = error.message;
+        errorElement.style.display = 'block';
+    }
+}
+
+function displayUserInfo() {
+    // Create user info display
+    let userInfoElement = document.getElementById('user-info');
+    if (!userInfoElement) {
+        userInfoElement = document.createElement('div');
+        userInfoElement.id = 'user-info';
+        userInfoElement.className = 'user-info';
+        document.body.appendChild(userInfoElement);
+    }
+    
+    const user = window.CCPTApp.currentUser;
+    userInfoElement.innerHTML = `
+        <span class="participant-id">${user.participantNumber}</span>
+        <span class="study-group">(${user.studyGroup})</span>
+        <button class="logout-btn" onclick="logout()">Logout</button>
+    `;
+}
+
+function logout() {
+    window.AuthSystem.logout();
+    window.CCPTApp.currentUser = null;
+    window.CCPTApp.isLoggedIn = false;
+    
+    // Reset test progress
+    resetTestFunnelProgress();
+    
+    // Hide user info
+    const userInfo = document.getElementById('user-info');
+    if (userInfo) {
+        userInfo.remove();
+    }
+    
+    // Go back to login
+    showScreen('login-screen');
+}
+
+// ===== TEST FUNNEL MANAGEMENT =====
+function resetTestFunnelProgress() {
+    window.CCPTApp.testFunnelProgress = {
+        ccpt: { completed: false, results: null },
+        nback: { completed: false, results: null }
+    };
+}
+
+function updateTestFunnelProgress(testType, results) {
+    window.CCPTApp.testFunnelProgress[testType] = {
+        completed: true,
+        results: results
+    };
+    
+    // Check if all tests are completed
+    const allCompleted = Object.values(window.CCPTApp.testFunnelProgress)
+        .every(test => test.completed);
+        
+    if (allCompleted) {
+        showScreen('final-results');
+    } else {
+        showScreen('test-funnel');
+    }
+}
+
+function getNextIncompleteTest() {
+    const progress = window.CCPTApp.testFunnelProgress;
+    
+    if (!progress.ccpt.completed) return 'ccpt';
+    if (!progress.nback.completed) return 'nback';
+    
+    return null; // All tests completed
+}
+
+function startNextTest() {
+    const nextTest = getNextIncompleteTest();
+    
+    if (!nextTest) {
+        showScreen('final-results');
+        return;
+    }
+    
+    if (nextTest === 'ccpt') {
+        startCCPTTest();
+    } else if (nextTest === 'nback') {
+        startNBackTest();
+    }
+}
+
+// ===== CCPT TEST FLOW =====
+function startCCPTTest() {
+    console.log('🎯 Starting CCPT test flow...');
+    
+    // Set up CCPT configuration
+    const config = {
+        participantId: window.CCPTApp.currentUser.participantNumber,
+        ...window.CCPTApp.testConfigurations.ccpt
+    };
+    
+    window.CCPTApp.ccptEngine = new CCPTTestEngine(config);
+    window.CCPTApp.isTestInProgress = true;
+    updateNavigationVisibility();
+    
+    showScreen('ccpt-practice');
+}
+
+async function runCCPTPractice() {
+    try {
+        const results = await window.CCPTApp.ccptEngine.runPractice();
+        displayCCPTPracticeResults(results);
+    } catch (error) {
+        console.error('❌ CCPT practice failed:', error);
+        showError('CCPT practice failed. Please try again.');
+    }
+}
+
+async function runCCPTMainTest() {
+    try {
+        showScreen('ccpt-test');
+        const results = await window.CCPTApp.ccptEngine.runMainTest();
+        
+        // Save results and update progress
+        await saveTestResults('ccpt', results);
+        updateTestFunnelProgress('ccpt', results);
+        
+        window.CCPTApp.isTestInProgress = false;
+        updateNavigationVisibility();
+        
+    } catch (error) {
+        console.error('❌ CCPT main test failed:', error);
+        window.CCPTApp.isTestInProgress = false;
+        updateNavigationVisibility();
+        showError('CCPT test failed. Please contact the researcher.');
+    }
+}
+
+// ===== N-BACK TEST FLOW =====
+function startNBackTest() {
+    console.log('🧠 Starting N-Back test flow...');
+    
+    const config = {
+        participantId: window.CCPTApp.currentUser.participantNumber,
+        ...window.CCPTApp.testConfigurations.nback
+    };
+    
+    window.CCPTApp.nbackEngine = new NBackTestEngine(config);
+    window.CCPTApp.isTestInProgress = true;
+    updateNavigationVisibility();
+    
+    showScreen('nback-practice');
+}
+
+async function runNBackPractice() {
+    try {
+        const results = await window.CCPTApp.nbackEngine.runPractice();
+        displayNBackPracticeResults(results);
+    } catch (error) {
+        console.error('❌ N-Back practice failed:', error);
+        showError('N-Back practice failed. Please try again.');
+    }
+}
+
+async function runNBackMainTest() {
+    try {
+        showScreen('nback-test');
+        const results = await window.CCPTApp.nbackEngine.runMainTest();
+        
+        // Save results and update progress
+        await saveTestResults('nback', results);
+        updateTestFunnelProgress('nback', results);
+        
+        window.CCPTApp.isTestInProgress = false;
+        updateNavigationVisibility();
+        
+    } catch (error) {
+        console.error('❌ N-Back main test failed:', error);
+        window.CCPTApp.isTestInProgress = false;
+        updateNavigationVisibility();
+        showError('N-Back test failed. Please contact the researcher.');
+    }
+}
+
+// ===== NAVIGATION & SCREEN MANAGEMENT =====
+function showScreen(screenId) {
+    // Check authentication requirements
+    if (!window.CCPTApp.isLoggedIn && screenId !== 'login-screen') {
+        showScreen('login-screen');
+        return;
+    }
+    
+    console.log(`📺 Showing screen: ${screenId}`);
     
     // Hide all screens
     document.querySelectorAll('.screen').forEach(screen => {
@@ -95,756 +358,448 @@ function showScreen(screenId) {
     if (targetScreen) {
         targetScreen.classList.add('active');
         window.CCPTApp.currentScreen = screenId;
-        updateNavigationVisibility();
-        initializeScreen(screenId);
     } else {
         console.error(`❌ Screen not found: ${screenId}`);
-    }
-}
-
-function initializeScreen(screenId) {
-    switch (screenId) {
-        case 'home-screen':
-            // Nothing special needed
-            break;
-            
-            case 'config-screen':
-                // Focus on participant ID field and setup timing preview
-                setTimeout(() => {
-                    const participantField = document.getElementById('participant-id');
-                    if (participantField) participantField.focus();
-                    setupTimingPreview(); // Add this line
-                }, 100);
-                break;
-            
-        case 'practice-screen':
-            setupPracticeScreen();
-            break;
-            
-        case 'test-screen':
-            // Test screen will be handled by test engine
-            break;
-            
-        case 'results-screen':
-            displayResults();
-            break;
-            
-        case 'admin-screen':
-            loadAdminData();
-            break;
-    }
-}
-
-// ===== NAVIGATION FUNCTIONS =====
-function goHome() {
-    // Check for ANY running session
-    const anySessionRunning = window.CCPTApp.isTestInProgress || 
-        (window.CCPTApp.testEngine && window.CCPTApp.testEngine.isAnySessionRunning());
-        
-    if (anySessionRunning) {
-        showNavigationWarning();
         return;
     }
-    showScreen('home-screen');
-}
-
-function goToConfig() {
-    showScreen('config-screen');
-}
-
-function goToAdmin() {
-    showScreen('admin-screen');
-}
-
-function startNewTest() {
-    // Reset any existing state
-    window.CCPTApp.config = null;
-    window.CCPTApp.practiceResults = null;
-    window.CCPTApp.testResults = null;
     
-    showScreen('config-screen');
-}
-
-// ===== NAVIGATION CONTROL =====
-function updateNavigationVisibility() {
-    const navControls = document.getElementById('nav-controls');
-    const testWarning = document.getElementById('test-progress-warning');
-    
-    // Check for ANY running session
-    const anySessionRunning = window.CCPTApp.isTestInProgress || 
-        (window.CCPTApp.testEngine && window.CCPTApp.testEngine.isAnySessionRunning());
-    
-    if (anySessionRunning) {
-        navControls.classList.add('hidden');
-        testWarning.classList.add('show');
-    } else {
-        navControls.classList.remove('hidden');
-        testWarning.classList.remove('show');
+    // Screen-specific setup
+    switch (screenId) {
+        case 'login-screen':
+            setupLoginScreen();
+            break;
+        case 'test-funnel':
+            setupTestFunnel();
+            break;
+        case 'admin-dashboard':
+            setupAdminDashboard();
+            break;
+        case 'ccpt-practice':
+            setupCCPTPracticeScreen();
+            break;
+        case 'nback-practice':
+            setupNBackPracticeScreen();
+            break;
+        case 'final-results':
+            displayFinalResults();
+            break;
     }
 }
 
-function showNavigationWarning() {
-    const modal = document.getElementById('navigation-warning-modal');
-    if (modal) {
-        modal.style.display = 'block';
-    }
-}
-
-function closeModal() {
-    const modal = document.getElementById('navigation-warning-modal');
-    if (modal) {
-        modal.style.display = 'none';
-    }
-}
-
-// ===== CONFIGURATION HANDLING =====
-function setupEventListeners() {
-    // Configuration form
-    const configForm = document.getElementById('config-form');
-    if (configForm) {
-        configForm.addEventListener('submit', handleConfigSubmit);
-    }
-    
-    // Stimulus type change
-    const stimulusType = document.getElementById('stimulus-type');
-    if (stimulusType) {
-        stimulusType.addEventListener('change', updateStimulusPreview);
-    }
-    
-    // Prevent accidental navigation during test
-    window.addEventListener('beforeunload', (e) => {
-        if (window.CCPTApp.isTestInProgress) {
-            e.preventDefault();
-            e.returnValue = 'Test in progress. Are you sure you want to leave?';
-            return e.returnValue;
+function setupLoginScreen() {
+    // Focus on participant number field
+    setTimeout(() => {
+        const participantField = document.getElementById('participant-number');
+        if (participantField) {
+            participantField.focus();
         }
-    });
-    
-    // Keyboard shortcuts for test
-    document.addEventListener('keydown', handleGlobalKeypress);
+    }, 100);
 }
 
-function handleConfigSubmit(e) {
+function setupTestFunnel() {
+    updateTestFunnelDisplay();
+}
+
+function updateTestFunnelDisplay() {
+    const progress = window.CCPTApp.testFunnelProgress;
+    const funnelContainer = document.getElementById('test-funnel-container');
+    
+    if (!funnelContainer) return;
+    
+    // Calculate progress percentage
+    const completedTests = Object.values(progress).filter(test => test.completed).length;
+    const totalTests = Object.keys(progress).length;
+    const progressPercent = (completedTests / totalTests) * 100;
+    
+    // Update progress bar
+    const progressFill = document.querySelector('.test-progress-fill');
+    if (progressFill) {
+        progressFill.style.width = `${progressPercent}%`;
+    }
+    
+    // Update test cards
+    updateTestCard('ccpt', progress.ccpt);
+    updateTestCard('nback', progress.nback);
+    
+    // Show appropriate button
+    const nextTest = getNextIncompleteTest();
+    const continueBtn = document.getElementById('continue-test-btn');
+    const viewResultsBtn = document.getElementById('view-results-btn');
+    
+    if (nextTest) {
+        continueBtn.style.display = 'block';
+        continueBtn.textContent = nextTest === 'ccpt' ? 'Start CCPT Test' : 'Start N-Back Test';
+        viewResultsBtn.style.display = 'none';
+    } else {
+        continueBtn.style.display = 'none';
+        viewResultsBtn.style.display = 'block';
+    }
+}
+
+function updateTestCard(testType, testProgress) {
+    const card = document.getElementById(`${testType}-card`);
+    if (!card) return;
+    
+    const nextTest = getNextIncompleteTest();
+    
+    if (testProgress.completed) {
+        card.className = 'test-card completed';
+        card.querySelector('.test-status').textContent = 'Completed';
+        card.querySelector('.test-status').className = 'test-status completed';
+    } else if (testType === nextTest) {
+        card.className = 'test-card current';
+        card.querySelector('.test-status').textContent = 'Ready to Start';
+        card.querySelector('.test-status').className = 'test-status current';
+    } else {
+        card.className = 'test-card';
+        card.querySelector('.test-status').textContent = 'Pending';
+        card.querySelector('.test-status').className = 'test-status pending';
+    }
+}
+
+// ===== ADMIN FUNCTIONS =====
+function setupAdminDashboard() {
+    loadParticipantList();
+    loadTestConfigurations();
+    loadSessionStatistics();
+}
+
+function loadParticipantList() {
+    try {
+        const participants = window.AuthSystem.getAllParticipants();
+        const listContainer = document.getElementById('participant-list');
+        
+        if (!listContainer) return;
+        
+        listContainer.innerHTML = participants.map(p => `
+            <div class="participant-item">
+                <strong>${p.participantNumber}</strong>
+                <span class="study-group">${p.studyGroup}</span>
+                <span class="test-assignment">${p.assignedTests.join(', ')}</span>
+            </div>
+        `).join('');
+        
+    } catch (error) {
+        console.error('❌ Failed to load participants:', error);
+    }
+}
+
+function loadTestConfigurations() {
+    // Populate CCPT config form
+    const ccptForm = document.getElementById('ccpt-config-form');
+    if (ccptForm) {
+        const config = window.CCPTApp.testConfigurations.ccpt;
+        Object.keys(config).forEach(key => {
+            const input = ccptForm.querySelector(`[name="${key}"]`);
+            if (input) {
+                input.value = config[key];
+            }
+        });
+    }
+    
+    // Populate N-Back config form
+    const nbackForm = document.getElementById('nback-config-form');
+    if (nbackForm) {
+        const config = window.CCPTApp.testConfigurations.nback;
+        Object.keys(config).forEach(key => {
+            const input = nbackForm.querySelector(`[name="${key}"]`);
+            if (input) {
+                input.value = config[key];
+            }
+        });
+    }
+}
+
+async function handleAddParticipant(e) {
     e.preventDefault();
     
-    console.log('📝 Processing configuration...');
-    
-    // Collect form data
     const formData = new FormData(e.target);
-    const config = {};
+    const participantNumber = formData.get('participantNumber').trim();
+    const pin = formData.get('pin').trim();
+    const studyGroup = formData.get('studyGroup');
     
-    // Convert FormData to object
+    try {
+        window.AuthSystem.addParticipant(participantNumber, pin, studyGroup);
+        loadParticipantList(); // Refresh list
+        e.target.reset(); // Clear form
+        showSuccess('Participant added successfully');
+    } catch (error) {
+        showError(`Failed to add participant: ${error.message}`);
+    }
+}
+
+function handleCCPTConfigUpdate(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(e.target);
+    const newConfig = {};
+    
     for (let [key, value] of formData.entries()) {
-        config[key] = value;
-    }
-    
-    // Validate required fields
-    if (!config.participantId || config.participantId.trim() === '') {
-        showError('Please enter a Participant ID');
-        return;
-    }
-    
-    // Process and store configuration
-    window.CCPTApp.config = processConfiguration(config);
-    
-    console.log('✅ Configuration saved:', window.CCPTApp.config);
-    
-    // Go to practice screen
-    showScreen('practice-screen');
-}
-
-function processConfiguration(rawConfig) {
-    console.log('📝 Processing raw configuration:', rawConfig);
-    
-    const processed = {
-        // Participant info
-        participantId: rawConfig.participantId.trim(),
-        age: rawConfig.age ? parseInt(rawConfig.age) : null,
-        gender: rawConfig.gender,
-        condition: rawConfig.condition,
-        
-        // Test parameters with validation
-duration: parseFloat(rawConfig.duration) * 60, // Convert to seconds
-targetProbability: parseFloat(rawConfig.targetProbability) / 100, // Convert to decimal
-stimulusDuration: (() => {
-    const stimDur = parseInt(rawConfig.stimulusDuration);
-    if (stimDur < 50 || stimDur > 5000) {
-        throw new Error('Stimulus duration must be between 50-5000ms');
-    }
-    console.log(`⏱️ Stimulus duration: ${stimDur}ms`);
-    return stimDur;
-})(),
-isiDuration: (() => {
-    const isiDur = parseFloat(rawConfig.isiDuration) * 1000; // Convert to milliseconds
-    if (isiDur < 500 || isiDur > 10000) {
-        throw new Error('ISI duration must be between 0.5-10.0 seconds');
-    }
-    console.log(`⏱️ ISI duration: ${isiDur}ms`);
-    return isiDur;
-})(),
-        
-        // Stimulus settings
-        stimulusType: rawConfig.stimulusType,
-        
-        // Generated timestamp
-        timestamp: new Date().toISOString()
-    };
-    
-    // Get stimulus sets
-    const stimulusSet = getStimulusSet(rawConfig.stimulusType);
-    processed.target = stimulusSet.target;
-    processed.nonTargets = stimulusSet.nonTargets;
-    processed.description = stimulusSet.description;
-    
-    console.log('✅ Processed configuration:', processed);
-    console.log(`🎯 Using stimulus type: "${processed.stimulusType}" with target: "${processed.target}"`);
-    
-    return processed;
-}
-
-function getStimulusSet(type) {
-    const stimulusSets = {
-        letters: {
-            target: 'X',
-            nonTargets: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'Y', 'Z'],
-            description: 'Press SPACEBAR when you see the letter X'
-        },
-        numbers: {
-            target: '7',
-            nonTargets: ['0', '1', '2', '3', '4', '5', '6', '8', '9'],
-            description: 'Press SPACEBAR when you see the number 7'
-        },
-        shapes: {
-            target: '●',
-            nonTargets: ['○', '□', '■', '△', '▲', '◇', '◆', '☆', '★'],
-            description: 'Press SPACEBAR when you see the filled circle ●'
+        // Convert numeric values
+        if (['duration', 'stimulusDuration', 'isiDuration', 'targetProbability'].includes(key)) {
+            newConfig[key] = parseFloat(value);
+        } else if (key === 'nonTargets') {
+            newConfig[key] = value.split(',').map(s => s.trim());
+        } else {
+            newConfig[key] = value;
         }
-    };
+    }
     
-    console.log(`🎯 Getting stimulus set for type: "${type}"`);
-    const selected = stimulusSets[type] || stimulusSets.letters;
-    console.log(`📝 Selected stimulus set:`, selected);
-    
-    return selected;
+    window.CCPTApp.testConfigurations.ccpt = { ...window.CCPTApp.testConfigurations.ccpt, ...newConfig };
+    showSuccess('CCPT configuration updated');
 }
 
-function updateStimulusPreview() {
-    const stimulusTypeSelect = document.getElementById('stimulus-type');
-    if (!stimulusTypeSelect) return;
+function handleNBackConfigUpdate(e) {
+    e.preventDefault();
     
-    const stimulusType = stimulusTypeSelect.value;
-    console.log(`🔄 Updating stimulus preview for: "${stimulusType}"`);
+    const formData = new FormData(e.target);
+    const newConfig = {};
     
-    const stimulusSet = getStimulusSet(stimulusType);
-    
-    // Update preview
-    const targetPreview = document.querySelector('.target-preview');
-    const nonTargetPreview = document.querySelector('.nontarget-preview');
-    
-    if (targetPreview) {
-        targetPreview.textContent = stimulusSet.target;
-        console.log(`📱 Target preview updated to: "${stimulusSet.target}"`);
-    }
-    
-    if (nonTargetPreview) {
-        const nonTargetSample = stimulusSet.nonTargets.slice(0, 5).join(', ') + '...';
-        nonTargetPreview.textContent = nonTargetSample;
-        console.log(`📱 Non-target preview updated to: "${nonTargetSample}"`);
-    }
-}
-
-// ===== PRACTICE SCREEN =====
-function setupPracticeScreen() {
-    if (!window.CCPTApp.config) {
-        console.error('❌ No configuration found for practice');
-        showScreen('config-screen');
-        return;
-    }
-    
-    // Update instructions with current target
-    const targetDisplay = document.getElementById('target-display');
-    const practiceInstructions = document.getElementById('practice-instructions');
-    
-    if (targetDisplay) {
-        targetDisplay.textContent = window.CCPTApp.config.target;
-    }
-    
-    if (practiceInstructions) {
-        practiceInstructions.innerHTML = `
-            <p><strong>Your Task:</strong></p>
-            <p>Press the <kbd>SPACEBAR</kbd> when you see the target stimulus: <span class="target-highlight">${window.CCPTApp.config.target}</span></p>
-            <p><strong>Ignore</strong> all other stimuli</p>
-            <p>Respond as <strong>quickly</strong> and <strong>accurately</strong> as possible</p>
-        `;
-    }
-    
-    // Reset practice results display
-    const practiceResults = document.getElementById('practice-results');
-    if (practiceResults) {
-        practiceResults.classList.remove('show');
-    }
-}
-
-function startPractice() {
-    console.log('🎯 Starting practice session...');
-    
-    // Enhanced safety check
-    if (window.CCPTApp.testEngine && window.CCPTApp.testEngine.isAnySessionRunning()) {
-        console.log('⚠️ Session already running, stopping first');
-        window.CCPTApp.testEngine.stop();
-    }
-    
-    const startBtn = document.getElementById('start-practice-btn');
-    if (startBtn) {
-        startBtn.disabled = true;
-        startBtn.textContent = 'Practice Running...';
-    }
-    
-    showScreen('test-screen');
-    
-    setTimeout(() => {
-        // Create fresh test engine
-        if (window.CCPTApp.testEngine) {
-            window.CCPTApp.testEngine.stop();
-            window.CCPTApp.testEngine = null;
+    for (let [key, value] of formData.entries()) {
+        // Convert numeric values
+        if (['nLevel', 'gridSize', 'stimulusDuration', 'isiDuration', 'totalTrials', 'practiceTrials', 'targetProbability'].includes(key)) {
+            newConfig[key] = parseFloat(value);
+        } else {
+            newConfig[key] = value;
         }
-        
-        window.CCPTApp.testEngine = new CCPTTestEngine(window.CCPTApp.config);
-        
-        window.CCPTApp.testEngine.runPractice()
-            .then(results => {
-                console.log('✅ Practice completed, returning to practice screen');
-                window.CCPTApp.practiceResults = results;
-                showScreen('practice-screen');
-                displayPracticeResults(results);
-            })
-            .catch(error => {
-                console.error('❌ Practice session failed:', error);
-                showScreen('practice-screen');
-                showError('Practice session failed. Please try again.');
-            })
-            .finally(() => {
-                if (startBtn) {
-                    startBtn.disabled = false;
-                    startBtn.textContent = '🎯 Start Practice (15 trials)';
-                }
-            });
-    }, 500);
+    }
+    
+    window.CCPTApp.testConfigurations.nback = { ...window.CCPTApp.testConfigurations.nback, ...newConfig };
+    showSuccess('N-Back configuration updated');
 }
 
-function displayPracticeResults(results) {
-    const practiceResults = document.getElementById('practice-results');
-    const practiceSummary = document.getElementById('practice-summary');
+// ===== PRACTICE RESULTS DISPLAY =====
+function displayCCPTPracticeResults(results) {
+    const resultsContainer = document.getElementById('ccpt-practice-results');
+    if (!resultsContainer) return;
     
-    if (!practiceResults || !practiceSummary) return;
-    
-    // Calculate performance level
     let performanceLevel, performanceColor, advice;
     
     if (results.accuracy >= 0.8) {
         performanceLevel = 'Excellent!';
         performanceColor = '#28a745';
-        advice = 'You\'re ready for the main test!';
+        advice = 'You\'re ready for the main CCPT test!';
     } else if (results.accuracy >= 0.6) {
         performanceLevel = 'Good!';
         performanceColor = '#ffc107';
-        advice = 'You\'re getting the hang of it. Remember to only respond to targets.';
+        advice = 'Good work! Remember to only respond to targets.';
     } else {
         performanceLevel = 'Keep Practicing';
         performanceColor = '#dc3545';
-        advice = 'Remember: Only press SPACEBAR for the target stimulus. Ignore everything else.';
+        advice = `Remember: Only press SPACEBAR for "${window.CCPTApp.testConfigurations.ccpt.target}". Ignore other letters.`;
     }
     
-    practiceSummary.innerHTML = `
-        <div style="text-align: center; margin: 20px 0;">
-            <div style="font-size: 24px; color: ${performanceColor}; font-weight: bold;">${performanceLevel}</div>
-            <div style="margin: 15px 0;">
-                <strong>Accuracy:</strong> ${(results.accuracy * 100).toFixed(1)}% 
-                (${results.correct}/${results.total} correct)
+    resultsContainer.innerHTML = `
+        <div style="text-align: center;">
+            <div style="font-size: 24px; color: ${performanceColor}; font-weight: bold; margin-bottom: 20px;">
+                ${performanceLevel}
             </div>
-            <div style="margin: 15px 0;">
-                <strong>Average Response Time:</strong> ${results.averageRT ? results.averageRT.toFixed(0) + 'ms' : 'N/A'}
+            <div class="metric">
+                <strong>Accuracy:</strong> ${(results.accuracy * 100).toFixed(1)}%
+            </div>
+            <div class="metric">
+                <strong>Response Time:</strong> ${results.averageRT ? results.averageRT.toFixed(0) + 'ms' : 'N/A'}
             </div>
             <p style="color: #666; margin-top: 15px;">${advice}</p>
         </div>
     `;
     
-    practiceResults.classList.add('show');
+    resultsContainer.classList.add('show');
 }
 
-// ===== MAIN TEST =====
-function startMainTest() {
-    console.log('🚀 Starting main test...');
+function displayNBackPracticeResults(results) {
+    const resultsContainer = document.getElementById('nback-practice-results');
+    if (!resultsContainer) return;
     
-    if (!window.CCPTApp.config) {
-        console.error('❌ No configuration found for main test');
-        showScreen('config-screen');
-        return;
-    }
+    let performanceLevel, performanceColor, advice;
     
-    // Set test in progress
-    window.CCPTApp.isTestInProgress = true;
-    updateNavigationVisibility();
-    
-    // Switch to test screen
-    showScreen('test-screen');
-    
-    // Initialize test engine if needed
-    if (!window.CCPTApp.testEngine) {
-        window.CCPTApp.testEngine = new CCPTTestEngine(window.CCPTApp.config);
-    }
-    
-    // Run main test
-    window.CCPTApp.testEngine.runMainTest()
-        .then(results => {
-            window.CCPTApp.testResults = results;
-            completeTest(results);
-        })
-        .catch(error => {
-            console.error('❌ Main test failed:', error);
-            window.CCPTApp.isTestInProgress = false;
-            updateNavigationVisibility();
-            showError('Test failed. Please contact the researcher.');
-        });
-}
-
-function completeTest(results) {
-    console.log('✅ Test completed successfully');
-    
-    // Test is no longer in progress
-    window.CCPTApp.isTestInProgress = false;
-    updateNavigationVisibility();
-    
-    // Save data to Firebase
-    saveTestData(results);
-    
-    // Show results screen
-    showScreen('results-screen');
-}
-
-function confirmQuitTest() {
-    if (confirm('Are you sure you want to end the test early? This will lose all current data.')) {
-        quitTest();
-    }
-}
-
-function quitTest() {
-    console.log('⏹️ Test quit by user');
-    
-    if (window.CCPTApp.testEngine) {
-        window.CCPTApp.testEngine.stop();
-    }
-    
-    window.CCPTApp.isTestInProgress = false;
-    updateNavigationVisibility();
-    
-    showScreen('home-screen');
-}
-
-// ===== RESULTS DISPLAY =====
-function displayResults() {
-    const resultsContainer = document.getElementById('results-container');
-    
-    if (!window.CCPTApp.testResults || !resultsContainer) {
-        console.error('❌ No test results to display');
-        return;
-    }
-    
-    const results = window.CCPTApp.testResults;
-    
-    // Calculate performance level
-    let performanceLevel, performanceColor;
-    if (results.dPrime >= 2.0) {
-        performanceLevel = 'Excellent';
+    if (results.accuracy >= 0.7) {
+        performanceLevel = 'Excellent!';
         performanceColor = '#28a745';
-    } else if (results.dPrime >= 1.0) {
-        performanceLevel = 'Good';
+        advice = 'You\'re ready for the main N-Back test!';
+    } else if (results.accuracy >= 0.5) {
+        performanceLevel = 'Good!';
         performanceColor = '#ffc107';
-    } else if (results.dPrime >= 0.5) {
-        performanceLevel = 'Fair';
-        performanceColor = '#fd7e14';
+        advice = 'Good work! Remember the position from ' + this.config.nLevel + ' steps back.';
     } else {
-        performanceLevel = 'Poor';
+        performanceLevel = 'Keep Practicing';
         performanceColor = '#dc3545';
+        advice = `Remember: Press SPACEBAR only when the current position matches the position from ${window.CCPTApp.testConfigurations.nback.nLevel} steps back.`;
     }
     
     resultsContainer.innerHTML = `
-        <div class="performance-summary">
-            <h3>Overall Performance</h3>
-            <div class="performance-level" style="color: ${performanceColor};">${performanceLevel}</div>
-            <p>Sensitivity (d'): ${results.dPrime.toFixed(2)}</p>
+        <div style="text-align: center;">
+            <div style="font-size: 24px; color: ${performanceColor}; font-weight: bold; margin-bottom: 20px;">
+                ${performanceLevel}
+            </div>
+            <div class="nback-metrics">
+                <div class="nback-metric">
+                    <span class="nback-metric-label">Accuracy</span>
+                    <span class="nback-metric-value">${(results.accuracy * 100).toFixed(1)}%</span>
+                </div>
+                <div class="nback-metric">
+                    <span class="nback-metric-label">Working Memory Capacity</span>
+                    <span class="nback-metric-value">${results.workingMemoryCapacity.toFixed(2)}</span>
+                </div>
+                <div class="nback-metric">
+                    <span class="nback-metric-label">Average Response Time</span>
+                    <span class="nback-metric-value">${results.averageRT ? results.averageRT.toFixed(0) + 'ms' : 'N/A'}</span>
+                </div>
+            </div>
+            <p style="color: #666; margin-top: 15px;">${advice}</p>
+        </div>
+    `;
+    
+    resultsContainer.classList.add('show');
+}
+
+// ===== FINAL RESULTS =====
+function displayFinalResults() {
+    const resultsContainer = document.getElementById('final-results-container');
+    if (!resultsContainer) return;
+    
+    const ccptResults = window.CCPTApp.testFunnelProgress.ccpt.results;
+    const nbackResults = window.CCPTApp.testFunnelProgress.nback.results;
+    
+    resultsContainer.innerHTML = `
+        <div class="final-results-summary">
+            <h3>📊 Test Session Complete</h3>
+            <p><strong>Participant:</strong> ${window.CCPTApp.currentUser.participantNumber}</p>
+            <p><strong>Study Group:</strong> ${window.CCPTApp.currentUser.studyGroup}</p>
+            <p><strong>Completed:</strong> ${new Date().toLocaleString()}</p>
         </div>
         
         <div class="results-grid">
-            <div class="results-card">
-                <h3>📊 Accuracy Metrics</h3>
-                <div class="metric">
-                    <span class="metric-label">Overall Accuracy:</span>
-                    <span class="metric-value">${(results.accuracy * 100).toFixed(1)}%</span>
-                </div>
-                <div class="metric">
-                    <span class="metric-label">Targets Detected:</span>
-                    <span class="metric-value">${results.hits}/${results.totalTargets} (${(results.hitRate * 100).toFixed(1)}%)</span>
-                </div>
-                <div class="metric">
-                    <span class="metric-label">False Alarms:</span>
-                    <span class="metric-value">${results.falseAlarms}/${results.totalNonTargets} (${(results.falseAlarmRate * 100).toFixed(1)}%)</span>
-                </div>
+            <div class="result-card">
+                <h4>CCPT Results</h4>
+                <div class="metric">Accuracy: ${(ccptResults.accuracy * 100).toFixed(1)}%</div>
+                <div class="metric">d': ${ccptResults.dPrime.toFixed(2)}</div>
+                <div class="metric">Response Time: ${ccptResults.averageRT.toFixed(0)}ms</div>
             </div>
             
-            <div class="results-card">
-                <h3>⚡ Response Times</h3>
-                <div class="metric">
-                    <span class="metric-label">Average RT:</span>
-                    <span class="metric-value">${results.meanRT ? results.meanRT.toFixed(0) + 'ms' : 'N/A'}</span>
-                </div>
-                <div class="metric">
-                    <span class="metric-label">Median RT:</span>
-                    <span class="metric-value">${results.medianRT ? results.medianRT.toFixed(0) + 'ms' : 'N/A'}</span>
-                </div>
-                <div class="metric">
-                    <span class="metric-label">RT Variability:</span>
-                    <span class="metric-value">${results.rtStd ? results.rtStd.toFixed(0) + 'ms' : 'N/A'}</span>
-                </div>
+            <div class="result-card">
+                <h4>N-Back Results</h4>
+                <div class="metric">Accuracy: ${(nbackResults.accuracy * 100).toFixed(1)}%</div>
+                <div class="metric">Working Memory Capacity: ${nbackResults.workingMemoryCapacity.toFixed(2)}</div>
+                <div class="metric">Response Time: ${nbackResults.averageRT ? nbackResults.averageRT.toFixed(0) + 'ms' : 'N/A'}</div>
             </div>
-
-            <div class="results-card">
-                <h3>⚡ ISI Response Analysis</h3>
-                <div class="metric">
-                    <span class="metric-label">Premature Responses:</span>
-                    <span class="metric-value">${results.totalIsiResponses}</span>
-                </div>
-                <div class="metric">
-                    <span class="metric-label">Trials with Premature:</span>
-                    <span class="metric-value">${results.trialsWithIsiResponses}/${results.totalTrials}</span>
-                </div>
-                <div class="metric">
-                    <span class="metric-label">Premature Rate:</span>
-                    <span class="metric-value ${results.prematureResponseRate > 0.1 ? 'warning' : results.prematureResponseRate > 0.2 ? 'poor' : 'good'}">${(results.prematureResponseRate * 100).toFixed(1)}%</span>
-                </div>
-                <div class="metric">
-                    <span class="metric-label">Avg Premature/Trial:</span>
-                    <span class="metric-value">${results.avgIsiResponsesPerTrial.toFixed(2)}</span>
-                </div>
-            </div>
-            
-            <div class="results-card">
-                <h3>🧠 Advanced Metrics</h3>
-                <div class="metric">
-                    <span class="metric-label">Sensitivity (d'):</span>
-                    <span class="metric-value ${results.dPrime >= 1.0 ? 'good' : results.dPrime >= 0.5 ? 'warning' : 'poor'}">${results.dPrime.toFixed(2)}</span>
-                </div>
-                <div class="metric">
-                    <span class="metric-label">Response Bias:</span>
-                    <span class="metric-value">${results.bias.toFixed(2)}</span>
-                </div>
-                <div class="metric">
-                    <span class="metric-label">Total Trials:</span>
-                    <span class="metric-value">${results.totalTrials}</span>
-                </div>
-            </div>
-        </div>
-        
-        <div style="margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 10px; text-align: center;">
-            <p><strong>Test completed on:</strong> ${new Date().toLocaleString()}</p>
-            <p><strong>Participant ID:</strong> ${window.CCPTApp.config.participantId}</p>
-            <p><strong>Duration:</strong> ${(window.CCPTApp.config.duration / 60).toFixed(1)} minutes</p>
         </div>
     `;
 }
 
 // ===== DATA MANAGEMENT =====
-async function saveTestData(results) {
+async function saveTestResults(testType, results) {
     if (!window.CCPTApp.db) {
         console.warn('⚠️ Firebase not available, data not saved to cloud');
         return;
     }
     
     try {
-        const testData = {
-            // Participant and session info
-            participantId: window.CCPTApp.config.participantId,
+        const sessionData = {
+            participantId: window.CCPTApp.currentUser.participantNumber,
+            testType: testType,
             timestamp: new Date(),
-            
-            // Configuration
-            configuration: window.CCPTApp.config,
-            
-            // Results
+            studyGroup: window.CCPTApp.currentUser.studyGroup,
             results: results,
-            
-            // Practice results if available
-            practiceResults: window.CCPTApp.practiceResults,
-            
-            // Browser/system info
-            systemInfo: {
-                userAgent: navigator.userAgent,
-                screen: {
-                    width: screen.width,
-                    height: screen.height
-                },
-                viewport: {
-                    width: window.innerWidth,
-                    height: window.innerHeight
-                }
-            }
+            configuration: window.CCPTApp.testConfigurations[testType],
+            userAgent: navigator.userAgent
         };
         
-        await window.CCPTApp.db.collection('ccpt_sessions').add(testData);
-        console.log('✅ Test data saved to Firebase');
+        await window.CCPTApp.db.collection('test_sessions').add(sessionData);
+        console.log(`✅ ${testType.toUpperCase()} results saved to Firebase`);
         
     } catch (error) {
-        console.error('❌ Failed to save test data:', error);
-        // Don't show error to user, as local download is still available
+        console.error(`❌ Failed to save ${testType} results:`, error);
     }
-}
-
-function downloadResults() {
-    if (!window.CCPTApp.testResults) {
-        showError('No results available to download');
-        return;
-    }
-    
-    const data = {
-        participantId: window.CCPTApp.config.participantId,
-        timestamp: new Date().toISOString(),
-        configuration: window.CCPTApp.config,
-        practiceResults: window.CCPTApp.practiceResults,
-        testResults: window.CCPTApp.testResults,
-        trialData: window.CCPTApp.testEngine ? window.CCPTApp.testEngine.getTrialData() : null
-    };
-    
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `ccpt_results_${window.CCPTApp.config.participantId}_${new Date().toISOString().slice(0, 19).replace(':', '-')}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    
-    URL.revokeObjectURL(url);
-    
-    console.log('💾 Results downloaded');
-}
-
-// ===== ADMIN FUNCTIONS =====
-function loadAdminData() {
-    const adminStats = document.getElementById('admin-stats');
-    
-    if (!window.CCPTApp.db) {
-        adminStats.innerHTML = '<p style="color: #dc3545;">Firebase not connected</p>';
-        return;
-    }
-    
-    adminStats.innerHTML = '<p>Loading statistics...</p>';
-    
-    // Load recent session count
-    window.CCPTApp.db.collection('ccpt_sessions')
-        .where('timestamp', '>', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000))
-        .get()
-        .then(querySnapshot => {
-            const recentSessions = querySnapshot.size;
-            adminStats.innerHTML = `
-                <div class="metric">
-                    <span class="metric-label">Recent Sessions (7 days):</span>
-                    <span class="metric-value">${recentSessions}</span>
-                </div>
-            `;
-        })
-        .catch(error => {
-            console.error('Error loading admin data:', error);
-            adminStats.innerHTML = '<p style="color: #dc3545;">Error loading data</p>';
-        });
-}
-
-function exportAllData() {
-    // TODO: Implement data export functionality
-    showError('Data export functionality coming soon');
-}
-
-function exportRecentData() {
-    // TODO: Implement recent data export
-    showError('Recent data export functionality coming soon');
-}
-
-function clearCache() {
-    if ('caches' in window) {
-        caches.keys().then(names => {
-            names.forEach(name => {
-                caches.delete(name);
-            });
-        });
-    }
-    
-    localStorage.clear();
-    sessionStorage.clear();
-    
-    alert('Cache cleared successfully');
-}
-
-function showSystemInfo() {
-    const info = {
-        userAgent: navigator.userAgent,
-        screen: `${screen.width}x${screen.height}`,
-        viewport: `${window.innerWidth}x${window.innerHeight}`,
-        language: navigator.language,
-        online: navigator.onLine,
-        cookieEnabled: navigator.cookieEnabled
-    };
-    
-    const infoText = Object.entries(info)
-        .map(([key, value]) => `${key}: ${value}`)
-        .join('\n');
-    
-    alert(`System Information:\n\n${infoText}`);
 }
 
 // ===== UTILITY FUNCTIONS =====
-function hideLoadingScreen() {
-    const loadingScreen = document.getElementById('loading-screen');
-    if (loadingScreen) {
-        loadingScreen.classList.add('hidden');
+function showError(message) {
+    // Create or update error display
+    let errorElement = document.getElementById('global-error');
+    if (!errorElement) {
+        errorElement = document.createElement('div');
+        errorElement.id = 'global-error';
+        errorElement.className = 'error-message';
+        errorElement.style.cssText = `
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 3000;
+            max-width: 400px;
+        `;
+        document.body.appendChild(errorElement);
+    }
+    
+    errorElement.textContent = message;
+    errorElement.style.display = 'block';
+    
+    // Auto-hide after 5 seconds
+    setTimeout(() => {
+        errorElement.style.display = 'none';
+    }, 5000);
+}
+
+function showSuccess(message) {
+    // Similar to showError but with success styling
+    let successElement = document.getElementById('global-success');
+    if (!successElement) {
+        successElement = document.createElement('div');
+        successElement.id = 'global-success';
+        successElement.style.cssText = `
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 3000;
+            max-width: 400px;
+            background: #d4edda;
+            color: #155724;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #c3e6cb;
+        `;
+        document.body.appendChild(successElement);
+    }
+    
+    successElement.textContent = message;
+    successElement.style.display = 'block';
+    
+    setTimeout(() => {
+        successElement.style.display = 'none';
+    }, 3000);
+}
+
+function updateNavigationVisibility() {
+    const userInfo = document.getElementById('user-info');
+    
+    if (window.CCPTApp.isTestInProgress) {
+        if (userInfo) userInfo.style.display = 'none';
+    } else {
+        if (userInfo) userInfo.style.display = 'block';
     }
 }
 
-function showError(message) {
-    alert(`❌ Error: ${message}`);
-    console.error('Application Error:', message);
-}
-
-function setupKeyboardShortcuts() {
-    // Development shortcuts (remove in production)
-    document.addEventListener('keydown', (e) => {
-        if (e.ctrlKey && e.shiftKey) {
-            switch(e.key) {
-                case 'H':
-                    e.preventDefault();
-                    goHome();
-                    break;
-                case 'C':
-                    e.preventDefault();
-                    showScreen('config-screen');
-                    break;
-                case 'A':
-                    e.preventDefault();
-                    showScreen('admin-screen');
-                    break;
-            }
-        }
-    });
+function hideLoadingScreen() {
+    const loadingScreen = document.getElementById('loading-screen');
+    if (loadingScreen) {
+        loadingScreen.style.display = 'none';
+    }
 }
 
 function handleGlobalKeypress(e) {
     // Handle escape key to quit test
     if (e.key === 'Escape' && window.CCPTApp.isTestInProgress) {
-        confirmQuitTest();
+        if (confirm('Are you sure you want to end the test early? This will lose current progress.')) {
+            endTestEarly();
+        }
     }
     
-    // Prevent common browser shortcuts during test
+    // Prevent browser shortcuts during test
     if (window.CCPTApp.isTestInProgress) {
         if (e.key === 'F5' || 
-            (e.ctrlKey && (e.key === 'r' || e.key === 'R' || e.key === 'w' || e.key === 'W')) ||
+            (e.ctrlKey && ['r', 'R', 'w', 'W'].includes(e.key)) ||
             e.key === 'F11') {
             e.preventDefault();
             return false;
@@ -852,53 +807,157 @@ function handleGlobalKeypress(e) {
     }
 }
 
-// ===== TIMING PREVIEW FUNCTIONS =====
-function updateTimingPreview() {
-    const stimDuration = parseFloat(document.getElementById('stimulus-duration')?.value) || 250;
-    const isiDuration = parseFloat(document.getElementById('isi-duration')?.value) || 1.5;
-    const targetProb = parseFloat(document.getElementById('target-probability')?.value) || 10;
+function endTestEarly() {
+    // Clean up any running tests
+    if (window.CCPTApp.ccptEngine) {
+        window.CCPTApp.ccptEngine.forceStop();
+    }
+    if (window.CCPTApp.nbackEngine) {
+        window.CCPTApp.nbackEngine.forceStop();
+    }
     
-    // Calculate timing metrics
-    const trialDuration = (stimDuration / 1000) + isiDuration; // Convert ms to seconds
-    const trialsPerMinute = 60 / trialDuration;
-    const targetsPerMinute = trialsPerMinute * (targetProb / 100);
+    window.CCPTApp.isTestInProgress = false;
+    updateNavigationVisibility();
     
-    // Update display elements
-    const trialDurationEl = document.getElementById('trial-duration');
-    const trialsPerMinuteEl = document.getElementById('trials-per-minute');
-    const targetsPerMinuteEl = document.getElementById('targets-per-minute');
-    
-    if (trialDurationEl) trialDurationEl.textContent = trialDuration.toFixed(2) + 's';
-    if (trialsPerMinuteEl) trialsPerMinuteEl.textContent = trialsPerMinute.toFixed(1);
-    if (targetsPerMinuteEl) targetsPerMinuteEl.textContent = targetsPerMinute.toFixed(1);
-    
-    console.log(`⏱️ Timing preview updated: ${trialDuration.toFixed(2)}s per trial`);
+    showScreen('test-funnel');
 }
 
-function setupTimingPreview() {
-    const stimDurationInput = document.getElementById('stimulus-duration');
-    const isiDurationInput = document.getElementById('isi-duration');
-    const targetProbInput = document.getElementById('target-probability');
-    
-    if (stimDurationInput) {
-        stimDurationInput.addEventListener('input', updateTimingPreview);
-        console.log('✅ Stimulus duration input listener added');
-    }
-    
-    if (isiDurationInput) {
-        isiDurationInput.addEventListener('input', updateTimingPreview);
-        console.log('✅ ISI duration input listener added');
-    }
-    
-    if (targetProbInput) {
-        targetProbInput.addEventListener('change', updateTimingPreview);
-        console.log('✅ Target probability input listener added');
-    }
-    
-    // Initial preview update
-    updateTimingPreview();
-    console.log('✅ Timing preview initialized');
+// ===== BACKWARDS COMPATIBILITY =====
+// Keep existing functions for current CCPT implementation
+function setupPracticeScreen() {
+    setupCCPTPracticeScreen();
 }
 
-// ===== INITIALIZE ON LOAD =====
-// The app will be initialized when DOM is loaded via the script in HTML 
+function setupCCPTPracticeScreen() {
+    // Setup for CCPT practice
+    console.log('🎯 Setting up CCPT practice screen...');
+}
+
+function setupNBackPracticeScreen() {
+    // Setup for N-Back practice
+    console.log('🧠 Setting up N-Back practice screen...');
+}
+
+// ===== APP INITIALIZATION =====
+document.addEventListener('DOMContentLoaded', function() {
+    initializeApp();
+});
+function downloadAllResults() {
+    if (!window.CCPTApp.testFunnelProgress.ccpt.completed || 
+        !window.CCPTApp.testFunnelProgress.nback.completed) {
+        showError('Complete both tests before downloading results');
+        return;
+    }
+    
+    const allData = {
+        participantId: window.CCPTApp.currentUser.participantNumber,
+        studyGroup: window.CCPTApp.currentUser.studyGroup,
+        sessionTimestamp: new Date().toISOString(),
+        ccptResults: window.CCPTApp.testFunnelProgress.ccpt.results,
+        nbackResults: window.CCPTApp.testFunnelProgress.nback.results,
+        configurations: window.CCPTApp.testConfigurations
+    };
+    
+    const blob = new Blob([JSON.stringify(allData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `session_results_${window.CCPTApp.currentUser.participantNumber}_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    
+    URL.revokeObjectURL(url);
+    console.log('💾 Complete session results downloaded');
+}
+
+function loadSessionStatistics() {
+    const statsContainer = document.getElementById('session-statistics');
+    if (!statsContainer) return;
+    
+    if (!window.CCPTApp.db) {
+        statsContainer.innerHTML = '<p style="color: #dc3545;">Firebase not connected</p>';
+        return;
+    }
+    
+    // Load basic statistics
+    window.CCPTApp.db.collection('test_sessions')
+        .orderBy('timestamp', 'desc')
+        .limit(10)
+        .get()
+        .then(querySnapshot => {
+            const sessions = [];
+            querySnapshot.forEach(doc => {
+                sessions.push({ id: doc.id, ...doc.data() });
+            });
+            
+            const totalSessions = querySnapshot.size;
+            const ccptSessions = sessions.filter(s => s.testType === 'ccpt').length;
+            const nbackSessions = sessions.filter(s => s.testType === 'nback').length;
+            
+            statsContainer.innerHTML = `
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <span class="stat-label">Recent Sessions:</span>
+                        <span class="stat-value">${totalSessions}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">CCPT Sessions:</span>
+                        <span class="stat-value">${ccptSessions}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">N-Back Sessions:</span>
+                        <span class="stat-value">${nbackSessions}</span>
+                    </div>
+                </div>
+            `;
+        })
+        .catch(error => {
+            console.error('Error loading statistics:', error);
+            statsContainer.innerHTML = '<p style="color: #dc3545;">Error loading statistics</p>';
+        });
+}
+
+// Legacy function compatibility
+function goToAdmin() {
+    if (!window.CCPTApp.isLoggedIn) {
+        showScreen('login-screen');
+        return;
+    }
+    
+    if (window.AuthSystem.isAdmin()) {
+        showScreen('admin-dashboard');
+    } else {
+        showError('Admin access required');
+    }
+}
+
+// Legacy function compatibility  
+function startNewTest() {
+    if (!window.CCPTApp.isLoggedIn) {
+        showScreen('login-screen');
+        return;
+    }
+    
+    // Reset test progress and go to test funnel
+    resetTestFunnelProgress();
+    showScreen('test-funnel');
+}
+
+// Add these missing practice button functions
+function showCCPTMainTestButton() {
+    const mainTestBtn = document.getElementById('ccpt-main-test-btn');
+    const practiceAgainBtn = document.getElementById('ccpt-practice-again-btn');
+    
+    if (mainTestBtn) mainTestBtn.style.display = 'block';
+    if (practiceAgainBtn) practiceAgainBtn.style.display = 'block';
+}
+
+function showNBackMainTestButton() {
+    const mainTestBtn = document.getElementById('nback-main-test-btn');
+    const practiceAgainBtn = document.getElementById('nback-practice-again-btn');
+    
+    if (mainTestBtn) mainTestBtn.style.display = 'block';
+    if (practiceAgainBtn) practiceAgainBtn.style.display = 'block';
+}
