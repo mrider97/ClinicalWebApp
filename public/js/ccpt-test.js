@@ -147,22 +147,29 @@ class CCPTTestEngine {
 setupTestEnvironment() {
     console.log('🎮 Setting up CCPT test environment...');
     
-    // Try to get CCPT-specific elements first, then fall back to generic ones
-    this.stimulusElement = document.getElementById('ccpt-stimulus') || document.getElementById('stimulus');
-    this.fixationElement = document.getElementById('ccpt-fixation') || document.getElementById('fixation');
-    this.testOverlay = document.getElementById('ccpt-test-overlay') || document.getElementById('test-overlay');
+    // Check which screen we're on and get the appropriate elements
+    const currentScreen = window.CCPTApp.currentScreen;
+    
+    if (currentScreen === 'ccpt-practice') {
+        // Practice screen elements
+        this.stimulusElement = document.getElementById('ccpt-stimulus');
+        this.fixationElement = document.getElementById('ccpt-fixation');
+        this.testOverlay = null; // No overlay for practice
+    } else {
+        // Main test screen elements
+        this.stimulusElement = document.getElementById('ccpt-main-stimulus');
+        this.fixationElement = document.getElementById('ccpt-main-fixation');
+        this.testOverlay = document.getElementById('ccpt-test-overlay');
+    }
     
     console.log('🔍 DOM Elements found:');
-    console.log('- Stimulus element:', this.stimulusElement ? '✅' : '❌', this.stimulusElement);
-    console.log('- Fixation element:', this.fixationElement ? '✅' : '❌', this.fixationElement);
-    console.log('- Test overlay:', this.testOverlay ? '✅' : '❌', this.testOverlay);
+    console.log('- Current screen:', currentScreen);
+    console.log('- Stimulus element:', this.stimulusElement ? '✅' : '❌');
+    console.log('- Fixation element:', this.fixationElement ? '✅' : '❌');
+    console.log('- Test overlay:', this.testOverlay ? '✅' : '❌');
     
     if (!this.stimulusElement || !this.fixationElement) {
         console.error('❌ Missing required DOM elements');
-        console.log('Available elements with "stimulus" in ID:', 
-            Array.from(document.querySelectorAll('[id*="stimulus"]')).map(el => el.id));
-        console.log('Available elements with "fixation" in ID:', 
-            Array.from(document.querySelectorAll('[id*="fixation"]')).map(el => el.id));
         throw new Error('Required DOM elements not found. Make sure you are on the correct screen.');
     }
     
@@ -490,32 +497,36 @@ setupTestEnvironment() {
     
     // ===== COUNTDOWN =====
     async showCountdown() {
-        console.log('⏰ Starting countdown...');
-        
-        if (this.testOverlay) {
-            this.testOverlay.classList.remove('hidden');
-        }
-        
-        for (let i = 3; i > 0; i--) {
-            this.updateOverlayText(`Test starting in ${i}...`);
-            await this.sleep(1000);
-        }
-        
-        this.updateOverlayText('GO!', '#28a745');
-        await this.sleep(500);
-        
-        if (this.testOverlay) {
-            this.testOverlay.classList.add('hidden');
-        }
+    console.log('⏰ Starting countdown...');
+    
+    if (this.testOverlay) {
+        this.testOverlay.classList.remove('hidden');
     }
     
-    updateOverlayText(text, color = '#fff') {
-        const progressDiv = document.getElementById('test-progress');
-        if (progressDiv) {
-            progressDiv.textContent = text;
-            progressDiv.style.color = color;
-        }
+    for (let i = 3; i > 0; i--) {
+        this.updateOverlayText(`Test starting in ${i}...`);
+        await this.sleep(1000);
     }
+    
+    this.updateOverlayText('GO!', '#28a745');
+    await this.sleep(500);
+    
+    // CRITICAL: Hide the overlay so test is visible
+    if (this.testOverlay) {
+        this.testOverlay.classList.add('hidden');
+    }
+    
+    console.log('✅ Countdown complete, overlay hidden');
+}
+
+updateOverlayText(text, color = '#fff') {
+    // Try both possible element IDs
+    const progressDiv = document.getElementById('ccpt-test-progress') || document.getElementById('test-progress');
+    if (progressDiv) {
+        progressDiv.textContent = text;
+        progressDiv.style.color = color;
+    }
+}
     
     // ===== PRACTICE FEEDBACK =====
     async showPracticeFeedback(analysis) {

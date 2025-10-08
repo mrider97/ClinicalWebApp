@@ -604,7 +604,6 @@
 </section>
 
         <!-- CCPT TEST SCREEN -->
-        <!-- CCPT TEST SCREEN -->
         <section id="ccpt-test" class="screen">
             <div class="test-container">
                 <div class="test-overlay" id="ccpt-test-overlay">
@@ -615,8 +614,9 @@
                 </div>
                 
                 <div class="stimulus-area" id="ccpt-stimulus-area">
-                    <div class="fixation" id="ccpt-fixation">+</div>
-                    <div class="stimulus" id="ccpt-stimulus"></div>
+                    <!-- ADD THESE ELEMENTS - THEY WERE MISSING! -->
+                    <div class="fixation" id="ccpt-main-fixation">+</div>
+                    <div class="stimulus" id="ccpt-main-stimulus"></div>
                 </div>
                 
                 <div class="test-controls">
@@ -645,7 +645,11 @@
                         <li>This practice session has 10 trials</li>
                     </ul>
                 </div>
-                
+                        
+                <!-- ADD THIS DIV FOR THE GRID -->
+                <div id="nback-test-area" style="display: none; margin: 30px 0;">
+                    <!-- Grid will be injected here by JavaScript -->
+                </div>
                 <div class="form-actions text-center">
                     <button class="btn btn-primary btn-large" onclick="runNBackPractice()">
                         ▶️ Start N-Back Practice
@@ -671,11 +675,12 @@
         <!-- N-BACK TEST SCREEN -->
         <section id="nback-test" class="screen">
             <div class="nback-test-container">
-                <div id="nback-test-area">
-                    <!-- N-Back grid and controls will be populated by JavaScript -->
+                <!-- This div will be populated by JavaScript, but needs to exist -->
+                <div id="nback-test-area" style="min-height: 400px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                    <!-- Grid will be injected here -->
                 </div>
                 
-                <div class="test-controls">
+                <div class="test-controls" style="text-align: center; margin-top: 30px;">
                     <button class="btn btn-danger" onclick="endTestEarly()">
                         ⏹️ End Test Early
                     </button>

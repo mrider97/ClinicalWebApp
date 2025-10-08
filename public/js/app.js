@@ -658,6 +658,7 @@ async function runNBackPractice() {
     }
 }
 
+
 async function runNBackMainTest() {
     try {
         showScreen('nback-test');
@@ -737,34 +738,40 @@ function displayNBackPracticeResults(results) {
     } else if (results.accuracy >= 0.5) {
         performanceLevel = 'Good!';
         performanceColor = '#ffc107';
-        advice = `Good work! Remember the position from ${window.CCPTApp.testConfigurations.nback.nLevel} steps back.`;
+        advice = 'Good work! Keep focusing on the sequence.';
     } else {
         performanceLevel = 'Keep Practicing';
         performanceColor = '#dc3545';
-        advice = `Remember: Press SPACEBAR only when the current position matches the position from ${window.CCPTApp.testConfigurations.nback.nLevel} steps back.`;
+        advice = `Try to remember the last ${window.CCPTApp.testConfigurations.nback.nLevel} positions. Press SPACEBAR only when you see a match.`;
     }
     
     resultsContainer.innerHTML = `
         <h3>Practice Complete!</h3>
         <div style="text-align: center;">
-            <div style="font-size: 24px; color: ${performanceColor}; font-weight: bold; margin-bottom: 20px;">
+            <div class="nback-performance-level" style="color: ${performanceColor};">
                 ${performanceLevel}
             </div>
+            
             <div class="nback-metrics">
                 <div class="nback-metric">
                     <span class="nback-metric-label">Accuracy</span>
                     <span class="nback-metric-value">${(results.accuracy * 100).toFixed(1)}%</span>
                 </div>
                 <div class="nback-metric">
-                    <span class="nback-metric-label">Working Memory Capacity</span>
-                    <span class="nback-metric-value">${results.workingMemoryCapacity.toFixed(2)}</span>
+                    <span class="nback-metric-label">Hit Rate</span>
+                    <span class="nback-metric-value">${(results.hitRate * 100).toFixed(1)}%</span>
                 </div>
                 <div class="nback-metric">
-                    <span class="nback-metric-label">Average Response Time</span>
+                    <span class="nback-metric-label">Response Time</span>
                     <span class="nback-metric-value">${results.averageRT ? results.averageRT.toFixed(0) + 'ms' : 'N/A'}</span>
                 </div>
+                <div class="nback-metric">
+                    <span class="nback-metric-label">Working Memory</span>
+                    <span class="nback-metric-value">${results.workingMemoryCapacity ? results.workingMemoryCapacity.toFixed(2) : 'N/A'}</span>
+                </div>
             </div>
-            <p style="color: #666; margin-top: 15px;">${advice}</p>
+            
+            <p style="color: #666; margin-top: 20px;">${advice}</p>
         </div>
     `;
     
@@ -772,20 +779,22 @@ function displayNBackPracticeResults(results) {
     showNBackMainTestButton();
 }
 
+// Add after displayNBackPracticeResults() function
+
 function showCCPTMainTestButton() {
     const mainTestBtn = document.getElementById('ccpt-main-test-btn');
     const practiceAgainBtn = document.getElementById('ccpt-practice-again-btn');
     
-    if (mainTestBtn) mainTestBtn.style.display = 'block';
-    if (practiceAgainBtn) practiceAgainBtn.style.display = 'block';
+    if (mainTestBtn) mainTestBtn.classList.add('show');
+    if (practiceAgainBtn) practiceAgainBtn.classList.add('show');
 }
 
 function showNBackMainTestButton() {
     const mainTestBtn = document.getElementById('nback-main-test-btn');
     const practiceAgainBtn = document.getElementById('nback-practice-again-btn');
     
-    if (mainTestBtn) mainTestBtn.style.display = 'block';
-    if (practiceAgainBtn) practiceAgainBtn.style.display = 'block';
+    if (mainTestBtn) mainTestBtn.classList.add('show');
+    if (practiceAgainBtn) practiceAgainBtn.classList.add('show');
 }
 
 // ===== FINAL RESULTS =====

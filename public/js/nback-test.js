@@ -180,6 +180,10 @@ class NBackTestEngine {
         
         try {
             this.setupTestEnvironment();
+
+            // Add countdown before starting
+            await this.showCountdown();
+
             const sequence = this.generateSequence(this.config.totalTrials, this.config.targetProbability);
             const results = await this.executeTrialSequence(sequence, false);
             
@@ -506,6 +510,40 @@ class NBackTestEngine {
             this.responseHandler = null;
         }
     }
+
+    // Add this entire section to nback-test.js after cleanup() method
+
+async showCountdown() {
+    console.log('⏰ Starting N-Back countdown...');
+    
+    // Create temporary countdown overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'nback-overlay';
+    overlay.innerHTML = `
+        <div class="test-info">
+            <h3 id="nback-countdown-text">Test starting in 3...</h3>
+            <div class="test-reminder">Remember: Press SPACEBAR when position matches ${this.config.nLevel}-back</div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+    
+    const countdownText = document.getElementById('nback-countdown-text');
+    
+    for (let i = 3; i > 0; i--) {
+        if (countdownText) countdownText.textContent = `Test starting in ${i}...`;
+        await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+    
+    if (countdownText) {
+        countdownText.textContent = 'GO!';
+        countdownText.style.color = '#28a745';
+    }
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // Remove overlay
+    overlay.remove();
+    console.log('✅ N-Back countdown complete');
+}
 
     // ===== PUBLIC INTERFACE =====
     isAnySessionRunning() {
