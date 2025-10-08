@@ -90,7 +90,7 @@ class CCPTTestEngine {
             
             // Calculate trials from duration
             const trialDuration = (this.config.stimulusDuration + this.config.isiDuration) / 1000;
-            const totalTrials = Math.floor(this.config.duration / trialDuration);
+            const totalTrials = Math.floor((this.config.duration * 60) / trialDuration);
             
             const sequence = this.generateSequence(totalTrials, this.config.targetProbability);
             

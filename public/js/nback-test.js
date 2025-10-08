@@ -299,12 +299,33 @@ class NBackTestEngine {
 
     // ===== STIMULUS DISPLAY =====
     showStimulus(position) {
-        const cells = this.gridElement.querySelectorAll('.grid-cell');
+        // Query grid dynamically to ensure fresh reference
+        const grid = document.getElementById('nback-grid');
+        if (!grid) {
+            console.error('❌ Grid element not found when showing stimulus!');
+            return;
+        }
+        
+        const cells = grid.querySelectorAll('.grid-cell');
+        if (!cells || cells.length === 0) {
+            console.error('❌ No grid cells found!');
+            return;
+        }
+        
+        if (!cells[position]) {
+            console.error(`❌ Cell at position ${position} not found!`);
+            return;
+        }
+        
+        console.log(`💡 Lighting up cell ${position}`);
         cells[position].classList.add('active');
     }
 
     clearGrid() {
-        const cells = this.gridElement.querySelectorAll('.grid-cell');
+        const grid = document.getElementById('nback-grid');
+        if (!grid) return;
+        
+        const cells = grid.querySelectorAll('.grid-cell');
         cells.forEach(cell => cell.classList.remove('active'));
     }
 

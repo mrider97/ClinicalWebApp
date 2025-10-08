@@ -565,6 +565,8 @@ async function runCCPTMainTest() {
         
         window.CCPTApp.isTestInProgress = false;
         updateNavigationVisibility();
+
+        showScreen('test-funnel');
         
     } catch (error) {
         console.error('❌ CCPT main test failed:', error);
@@ -671,6 +673,9 @@ async function runNBackMainTest() {
         
         window.CCPTApp.isTestInProgress = false;
         updateNavigationVisibility();
+
+        showScreen('final-results');
+        displayFinalResults();
         
     } catch (error) {
         console.error('❌ N-Back main test failed:', error);
