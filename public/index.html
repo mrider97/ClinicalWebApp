@@ -17,6 +17,9 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 </head>
 <body>
+    <!-- React root - hidden -->
+    <div id="root" style="display: none;"></div>
+
     <!-- Loading Screen -->
     <div id="loading-screen" class="loading-screen">
         <div class="spinner"></div>
@@ -614,7 +617,7 @@
                 </div>
                 
                 <div class="stimulus-area" id="ccpt-stimulus-area">
-                    <!-- ADD THESE ELEMENTS - THEY WERE MISSING! -->
+                    <!-- CRITICAL: These two elements MUST be present -->
                     <div class="fixation" id="ccpt-main-fixation">+</div>
                     <div class="stimulus" id="ccpt-main-stimulus"></div>
                 </div>
@@ -628,6 +631,7 @@
         </section>
 
         <!-- N-BACK PRACTICE SCREEN -->
+        <!-- Change the ID from "nback-test-area" to "nback-practice-test-area" -->
         <section id="nback-practice" class="screen">
             <div class="container">
                 <header>
@@ -646,10 +650,11 @@
                     </ul>
                 </div>
                         
-                <!-- ADD THIS DIV FOR THE GRID -->
-                <div id="nback-test-area" style="display: none; margin: 30px 0;">
+                <!-- CHANGED ID HERE -->
+                <div id="nback-practice-test-area" style="display: none; margin: 30px 0;">
                     <!-- Grid will be injected here by JavaScript -->
                 </div>
+                
                 <div class="form-actions text-center">
                     <button class="btn btn-primary btn-large" onclick="runNBackPractice()">
                         ▶️ Start N-Back Practice
@@ -672,21 +677,22 @@
             </div>
         </section>
 
-        <!-- N-BACK TEST SCREEN -->
-        <section id="nback-test" class="screen">
-            <div class="nback-test-container">
-                <!-- This div will be populated by JavaScript, but needs to exist -->
-                <div id="nback-test-area" style="min-height: 400px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
-                    <!-- Grid will be injected here -->
-                </div>
-                
-                <div class="test-controls" style="text-align: center; margin-top: 30px;">
-                    <button class="btn btn-danger" onclick="endTestEarly()">
-                        ⏹️ End Test Early
-                    </button>
-                </div>
-            </div>
-        </section>
+<!-- N-BACK TEST SCREEN -->
+<!-- Change the ID from "nback-test-area" to "nback-main-test-area" -->
+<section id="nback-test" class="screen">
+    <div class="nback-test-container">
+        <!-- CHANGED ID HERE -->
+        <div id="nback-main-test-area" style="min-height: 400px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+            <!-- Grid will be injected here -->
+        </div>
+        
+        <div class="test-controls">
+            <button class="btn btn-danger" onclick="endTestEarly()">
+                ⏹️ End Test Early
+            </button>
+        </div>
+    </div>
+</section>
 
         <!-- FINAL RESULTS SCREEN -->
         <section id="final-results" class="screen">

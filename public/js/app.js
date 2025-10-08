@@ -356,7 +356,7 @@ function setupNBackPracticeScreen() {
     }
     
     // Hide test area initially
-    const testArea = document.getElementById('nback-test-area');
+    const testArea = document.getElementById('nback-practice-test-area');
     if (testArea) {
         testArea.style.display = 'none';
     }
@@ -590,6 +590,8 @@ function startNBackTest() {
     showScreen('nback-practice');
 }
 
+// Replace the runNBackPractice() function in public/js/app.js
+
 async function runNBackPractice() {
     console.log('▶️ Running N-Back Practice...');
     
@@ -621,10 +623,10 @@ async function runNBackPractice() {
     }
     
     try {
-        // Prepare UI for test
+        // Prepare UI for test - UPDATED ID HERE
         const startBtn = document.querySelector('button[onclick="runNBackPractice()"]');
         const instructions = document.querySelector('#nback-practice .instructions-box');
-        const testArea = document.getElementById('nback-test-area');
+        const testArea = document.getElementById('nback-practice-test-area'); // Changed ID
         
         if (startBtn) startBtn.style.display = 'none';
         if (instructions) instructions.style.display = 'none';
@@ -647,10 +649,10 @@ async function runNBackPractice() {
         console.error('❌ N-Back practice failed:', error);
         showError('N-Back practice failed: ' + error.message);
         
-        // Restore UI on error
+        // Restore UI on error - UPDATED ID HERE
         const startBtn = document.querySelector('button[onclick="runNBackPractice()"]');
         const instructions = document.querySelector('#nback-practice .instructions-box');
-        const testArea = document.getElementById('nback-test-area');
+        const testArea = document.getElementById('nback-practice-test-area'); // Changed ID
         
         if (startBtn) startBtn.style.display = 'inline-block';
         if (instructions) instructions.style.display = 'block';
@@ -805,6 +807,17 @@ function displayFinalResults() {
     const ccptResults = window.CCPTApp.testFunnelProgress.ccpt.results;
     const nbackResults = window.CCPTApp.testFunnelProgress.nback.results;
     
+    // Add safety checks
+    if (!ccptResults || !nbackResults) {
+        resultsContainer.innerHTML = `
+            <div class="final-results-summary">
+                <h3>⚠️ Results Incomplete</h3>
+                <p>Not all tests have been completed yet.</p>
+            </div>
+        `;
+        return;
+    }
+    
     resultsContainer.innerHTML = `
         <div class="final-results-summary">
             <h3>📊 Test Session Complete</h3>
@@ -815,17 +828,51 @@ function displayFinalResults() {
         
         <div class="results-grid">
             <div class="result-card">
-                <h4>CCPT Results</h4>
-                <div class="metric">Accuracy: ${(ccptResults.accuracy * 100).toFixed(1)}%</div>
-                <div class="metric">d': ${ccptResults.dPrime.toFixed(2)}</div>
-                <div class="metric">Response Time: ${ccptResults.averageRT.toFixed(0)}ms</div>
+                <h4>🎯 CCPT Results</h4>
+                <div class="metric">
+                    <span class="metric-label">Accuracy:</span>
+                    <span class="metric-value">${(ccptResults.accuracy * 100).toFixed(1)}%</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">d-prime (d'):</span>
+                    <span class="metric-value">${ccptResults.dPrime ? ccptResults.dPrime.toFixed(2) : 'N/A'}</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Response Time:</span>
+                    <span class="metric-value">${ccptResults.meanRT ? ccptResults.meanRT.toFixed(0) + 'ms' : 'N/A'}</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Hits:</span>
+                    <span class="metric-value">${ccptResults.hits || 0}</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">False Alarms:</span>
+                    <span class="metric-value">${ccptResults.falseAlarms || 0}</span>
+                </div>
             </div>
             
             <div class="result-card">
-                <h4>N-Back Results</h4>
-                <div class="metric">Accuracy: ${(nbackResults.accuracy * 100).toFixed(1)}%</div>
-                <div class="metric">Working Memory Capacity: ${nbackResults.workingMemoryCapacity.toFixed(2)}</div>
-                <div class="metric">Response Time: ${nbackResults.averageRT ? nbackResults.averageRT.toFixed(0) + 'ms' : 'N/A'}</div>
+                <h4>🧠 N-Back Results</h4>
+                <div class="metric">
+                    <span class="metric-label">Accuracy:</span>
+                    <span class="metric-value">${(nbackResults.accuracy * 100).toFixed(1)}%</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Working Memory Capacity:</span>
+                    <span class="metric-value">${nbackResults.workingMemoryCapacity ? nbackResults.workingMemoryCapacity.toFixed(2) : 'N/A'}</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Response Time:</span>
+                    <span class="metric-value">${nbackResults.averageRT ? nbackResults.averageRT.toFixed(0) + 'ms' : 'N/A'}</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Hit Rate:</span>
+                    <span class="metric-value">${nbackResults.hitRate ? (nbackResults.hitRate * 100).toFixed(1) + '%' : 'N/A'}</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">d-prime (d'):</span>
+                    <span class="metric-value">${nbackResults.dPrime ? nbackResults.dPrime.toFixed(2) : 'N/A'}</span>
+                </div>
             </div>
         </div>
     `;

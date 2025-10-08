@@ -50,13 +50,32 @@ class NBackTestEngine {
         return positions;
     }
 
+    // Replace the setupTestEnvironment() method in public/js/nback-test.js
+
     setupTestEnvironment() {
         console.log('🎮 Setting up N-Back test environment...');
+        console.log('Current screen:', window.CCPTApp.currentScreen);
         
-        // Create grid container
-        const testArea = document.getElementById('nback-test-area');
+        // Check which screen we're on and get the appropriate element
+        const currentScreen = window.CCPTApp.currentScreen;
+        let testArea;
+        
+        if (currentScreen === 'nback-practice') {
+            testArea = document.getElementById('nback-practice-test-area');
+            console.log('Looking for practice test area...');
+        } else if (currentScreen === 'nback-test') {
+            testArea = document.getElementById('nback-main-test-area');
+            console.log('Looking for main test area...');
+        } else {
+            console.error('❌ Unknown screen:', currentScreen);
+        }
+        
+        console.log('🔍 Test area element:', testArea ? '✅ Found' : '❌ Not found');
+        
         if (!testArea) {
-            throw new Error('N-Back test area not found in DOM');
+            console.error('❌ N-Back test area not found in DOM');
+            console.error('Available elements:', document.querySelectorAll('[id*="nback"]'));
+            throw new Error('N-Back test area not found. Make sure you are on the correct screen.');
         }
 
         // Clear and setup grid
@@ -68,12 +87,21 @@ class NBackTestEngine {
             </div>
             <div class="nback-instructions">
                 <p>Press SPACEBAR when the current position matches the position from ${this.config.nLevel} steps back</p>
-                <div class="trial-counter" id="trial-counter">Trial: 0/${this.config.totalTrials}</div>
+                <div class="trial-counter" id="trial-counter">Trial: 0/${this.isPractice ? this.config.practiceTrials : this.config.totalTrials}</div>
             </div>
         `;
 
+        // CRITICAL: Store reference to grid element
         this.gridElement = document.getElementById('nback-grid');
+        console.log('Grid element stored:', this.gridElement ? '✅' : '❌');
+        
+        if (this.gridElement) {
+            const cells = this.gridElement.querySelectorAll('.grid-cell');
+            console.log(`✅ Found ${cells.length} grid cells`);
+        }
+        
         this.setupResponseHandling();
+        console.log('✅ N-Back test environment setup complete');
     }
 
     setupResponseHandling() {
