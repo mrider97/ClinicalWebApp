@@ -86,8 +86,8 @@ setupTestEnvironment() {
     testArea.style.visibility = 'visible';
     testArea.style.opacity = '1';
     testArea.style.position = 'relative';
-    testArea.style.zIndex = '5000'; // VERY high to override everything
-    testArea.style.backgroundColor = '#f8f9fa'; // Light background
+    testArea.style.zIndex = '5000';
+    testArea.style.backgroundColor = '#f8f9fa';
     testArea.style.minHeight = '600px';
     console.log('✅ Test area forced visible with z-index 5000');
 
@@ -151,19 +151,22 @@ setupTestEnvironment() {
         </div>
     `;
 
-    // Store reference and verify
-    this.gridElement = document.getElementById('nback-grid');
+    // **CRITICAL FIX: Query within testArea, not globally!**
+    this.gridElement = testArea.querySelector('.nback-grid'); // Changed from getElementById
+    this.counterElement = testArea.querySelector('.trial-counter'); // Store counter too
+    this.testArea = testArea; // Store test area reference
+    
     console.log('Grid element stored:', this.gridElement ? '✅' : '❌');
     
     if (this.gridElement) {
         const cells = this.gridElement.querySelectorAll('.grid-cell');
-        console.log(`✅ Found ${cells.length} grid cells`);
+        console.log(`✅ Found ${cells.length} grid cells in correct test area`);
         console.log('Grid z-index:', getComputedStyle(this.gridElement).zIndex);
-        console.log('Grid position:', getComputedStyle(this.gridElement).position);
     }
     
     this.setupResponseHandling();
     console.log('✅ N-Back test environment setup complete');
+
     
     // Debug: Log all elements with high z-index
     setTimeout(() => {
@@ -279,31 +282,46 @@ setupResponseHandling() {
     }
 
     async runMainTest() {
-        console.log('🧪 Starting N-Back main test...');
-        
-        this.isPractice = false;
-        this.isRunning = true;
-        this.startTime = performance.now();
-        
-        try {
-            this.setupTestEnvironment();
+    console.log('🧪 Starting N-Back main test...');
+    
+    this.isPractice = false;
+    this.isRunning = true;
+    this.startTime = performance.now();
+    
+    try {
+        this.setupTestEnvironment();
 
-            // Add countdown before starting
-            await this.showCountdown();
+        // Add countdown before starting
+        await this.showCountdown();
 
-            const sequence = this.generateSequence(this.config.totalTrials, this.config.targetProbability);
-            const results = await this.executeTrialSequence(sequence, false);
-            
-            this.isRunning = false;
-            console.log('✅ N-Back main test completed');
-            return this.analyzeMainResults(results);
-            
-        } catch (error) {
-            this.isRunning = false;
-            console.error('❌ N-Back main test failed:', error);
-            throw error;
+        // **NEW: Critical delay and forced DOM refresh after countdown**
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        // **NEW: Force browser to repaint by querying grid dimensions**
+        const grid = document.getElementById('nback-grid');
+        const counter = document.getElementById('trial-counter');
+        if (grid) {
+            void grid.offsetHeight; // Force reflow
+            console.log('✅ Grid repaint forced');
         }
+        if (counter) {
+            void counter.offsetHeight; // Force reflow
+            console.log('✅ Counter repaint forced');
+        }
+
+        const sequence = this.generateSequence(this.config.totalTrials, this.config.targetProbability);
+        const results = await this.executeTrialSequence(sequence, false);
+        
+        this.isRunning = false;
+        console.log('✅ N-Back main test completed');
+        return this.analyzeMainResults(results);
+        
+    } catch (error) {
+        this.isRunning = false;
+        console.error('❌ N-Back main test failed:', error);
+        throw error;
     }
+}
 
     async executeTrialSequence(sequence, isPractice) {
         console.log(`▶️ Executing ${sequence.length} N-Back trials...`);
@@ -378,14 +396,13 @@ setupResponseHandling() {
 
 // ===== STIMULUS DISPLAY =====
     showStimulus(position) {
-    // Query grid dynamically to ensure fresh reference
-    const grid = document.getElementById('nback-grid');
-    if (!grid) {
-        console.error('❌ Grid element not found when showing stimulus!');
+    // Query grid from the stored reference (set in setupTestEnvironment)
+    if (!this.gridElement) {
+        console.error('❌ Grid element reference not stored!');
         return;
     }
     
-    const cells = grid.querySelectorAll('.grid-cell');
+    const cells = this.gridElement.querySelectorAll('.grid-cell');
     if (!cells || cells.length === 0) {
         console.error('❌ No grid cells found!');
         return;
@@ -401,7 +418,6 @@ setupResponseHandling() {
     // Remove active class from all cells first
     cells.forEach(cell => {
         cell.classList.remove('active');
-        // Reset inline styles
         cell.style.background = '#f8f9fa';
         cell.style.transform = 'scale(1)';
         cell.style.boxShadow = 'none';
@@ -411,40 +427,37 @@ setupResponseHandling() {
     const targetCell = cells[position];
     targetCell.classList.add('active');
     
-    // Apply inline styles for maximum visibility (overrides everything)
     targetCell.style.background = '#667eea';
     targetCell.style.borderColor = '#5a6fd8';
     targetCell.style.transform = 'scale(1.3)';
     targetCell.style.boxShadow = '0 0 40px rgba(102, 126, 234, 0.9)';
     targetCell.style.zIndex = '100';
     targetCell.style.position = 'relative';
-    targetCell.style.transition = 'none'; // Instant change
+    targetCell.style.transition = 'none';
     
-    // Force a reflow to ensure the style is applied immediately
     void targetCell.offsetWidth;
     
-    console.log(`✅ Cell ${position} activated with class:`, targetCell.className);
-    console.log(`✅ Cell ${position} inline styles:`, targetCell.style.cssText);
+    console.log(`✅ Cell ${position} activated`);
 }
 
-    clearGrid() {
-        const grid = document.getElementById('nback-grid');
-        if (!grid) return;
-        
-        const cells = grid.querySelectorAll('.grid-cell');
-        cells.forEach(cell => cell.classList.remove('active'));
-    }
+clearGrid() {
+    // Use stored grid reference instead of getElementById
+    if (!this.gridElement) return;
+    
+    const cells = this.gridElement.querySelectorAll('.grid-cell');
+    cells.forEach(cell => cell.classList.remove('active'));
+}
 
-    updateTrialCounter() {
-        const counter = document.getElementById('trial-counter');
-        if (counter) {
-            const total = this.isPractice ? this.config.practiceTrials : this.config.totalTrials;
-            counter.textContent = `Trial: ${this.currentTrial}/${total}`;
-            console.log(`🔢 Trial counter updated: ${this.currentTrial}/${total}`);
-        } else {
-            console.error('❌ Trial counter element not found!');
-        }
+updateTrialCounter() {
+    // Use stored counter reference
+    if (this.counterElement) {
+        const total = this.isPractice ? this.config.practiceTrials : this.config.totalTrials;
+        this.counterElement.textContent = `Trial: ${this.currentTrial}/${total}`;
+        console.log(`📢 Trial counter updated: ${this.currentTrial}/${total}`);
+    } else {
+        console.error('❌ Trial counter element not found!');
     }
+}
 
     // ===== RESPONSE HANDLING =====
     // (your next section continues here)
@@ -698,7 +711,7 @@ async showCountdown() {
     // Create temporary countdown overlay
     const overlay = document.createElement('div');
     overlay.className = 'nback-overlay';
-    overlay.id = 'nback-countdown-overlay-' + Date.now(); // Unique ID
+    overlay.id = 'nback-countdown-overlay-' + Date.now();
     overlay.style.cssText = `
         position: fixed;
         top: 0;
@@ -764,5 +777,26 @@ async showCountdown() {
         console.log('✅ All overlays confirmed removed');
     }
     
-    console.log('✅ N-Back countdown complete');
+    // **NEW: Force DOM to update and ensure grid is visible**
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    // **NEW: Re-verify grid visibility**
+    const grid = document.getElementById('nback-grid');
+    if (grid) {
+        grid.style.visibility = 'visible';
+        grid.style.opacity = '1';
+        grid.style.display = 'grid';
+        // Force reflow
+        void grid.offsetHeight;
+        console.log('✅ Grid visibility forced');
+    }
+    
+    const trialCounter = document.getElementById('trial-counter');
+    if (trialCounter) {
+        trialCounter.style.visibility = 'visible';
+        trialCounter.style.opacity = '1';
+        console.log('✅ Trial counter visibility forced');
+    }
+    
+    console.log('✅ N-Back countdown complete and grid verified');
 }}
