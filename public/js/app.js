@@ -663,17 +663,62 @@ async function runNBackPractice() {
 }
 
 
+// REPLACE your runNBackMainTest() function in app.js with this:
+
+
+// ===== COMPLETE FIX FOR N-BACK DISPLAY ISSUES =====
+// Add this as the FIRST thing in your runNBackMainTest() function in app.js
+
 async function runNBackMainTest() {
+    console.log('🚀 Starting N-Back Main Test...');
+
+        // CRITICAL: Force hide loading screen
+    const loadingScreen = document.getElementById('loading-screen');
+    if (loadingScreen) {
+        loadingScreen.style.display = 'none';
+        loadingScreen.classList.add('hidden');
+    }
+    
+    // CRITICAL: Remove any existing overlays first
+    console.log('🧹 Cleaning up any existing overlays...');
+    document.querySelectorAll('.nback-overlay, .test-overlay, [id*="countdown"]').forEach(el => {
+        console.log('Removing overlay:', el.className, el.id);
+        el.remove();
+    });
+    
     try {
+        // Switch to main test screen
         showScreen('nback-test');
+        
+        // CRITICAL: Make the test area visible with VERY high z-index
+        const testArea = document.getElementById('nback-main-test-area');
+        if (testArea) {
+            testArea.style.display = 'flex';
+            testArea.style.flexDirection = 'column';
+            testArea.style.alignItems = 'center';
+            testArea.style.justifyContent = 'center';
+            testArea.style.visibility = 'visible';
+            testArea.style.opacity = '1';
+            testArea.style.zIndex = '5000'; // VERY high z-index
+            testArea.style.position = 'relative';
+            console.log('✅ Main test area made visible with high z-index');
+            console.log('Test area computed style:', getComputedStyle(testArea).display, getComputedStyle(testArea).zIndex);
+        } else {
+            console.error('❌ Could not find nback-main-test-area element');
+        }
+        
+        // Run the main test
         const results = await window.CCPTApp.nbackEngine.runMainTest();
         
+        // Save results and update progress
         await saveTestResults('nback', results);
         updateTestFunnelProgress('nback', results);
         
+        // Test complete
         window.CCPTApp.isTestInProgress = false;
         updateNavigationVisibility();
 
+        // Show final results
         showScreen('final-results');
         displayFinalResults();
         

@@ -52,74 +52,153 @@ class NBackTestEngine {
 
     // Replace the setupTestEnvironment() method in public/js/nback-test.js
 
-    setupTestEnvironment() {
-        console.log('🎮 Setting up N-Back test environment...');
-        console.log('Current screen:', window.CCPTApp.currentScreen);
-        
-        // Check which screen we're on and get the appropriate element
-        const currentScreen = window.CCPTApp.currentScreen;
-        let testArea;
-        
-        if (currentScreen === 'nback-practice') {
-            testArea = document.getElementById('nback-practice-test-area');
-            console.log('Looking for practice test area...');
-        } else if (currentScreen === 'nback-test') {
-            testArea = document.getElementById('nback-main-test-area');
-            console.log('Looking for main test area...');
-        } else {
-            console.error('❌ Unknown screen:', currentScreen);
-        }
-        
-        console.log('🔍 Test area element:', testArea ? '✅ Found' : '❌ Not found');
-        
-        if (!testArea) {
-            console.error('❌ N-Back test area not found in DOM');
-            console.error('Available elements:', document.querySelectorAll('[id*="nback"]'));
-            throw new Error('N-Back test area not found. Make sure you are on the correct screen.');
-        }
-
-        // Clear and setup grid
-        testArea.innerHTML = `
-            <div class="nback-grid" id="nback-grid">
-                ${this.gridPositions.map(pos => 
-                    `<div class="grid-cell" data-position="${pos.id}"></div>`
-                ).join('')}
-            </div>
-            <div class="nback-instructions">
-                <p>Press SPACEBAR when the current position matches the position from ${this.config.nLevel} steps back</p>
-                <div class="trial-counter" id="trial-counter">Trial: 0/${this.isPractice ? this.config.practiceTrials : this.config.totalTrials}</div>
-            </div>
-        `;
-
-        // CRITICAL: Store reference to grid element
-        this.gridElement = document.getElementById('nback-grid');
-        console.log('Grid element stored:', this.gridElement ? '✅' : '❌');
-        
-        if (this.gridElement) {
-            const cells = this.gridElement.querySelectorAll('.grid-cell');
-            console.log(`✅ Found ${cells.length} grid cells`);
-        }
-        
-        this.setupResponseHandling();
-        console.log('✅ N-Back test environment setup complete');
+setupTestEnvironment() {
+    console.log('🎮 Setting up N-Back test environment...');
+    console.log('Current screen:', window.CCPTApp.currentScreen);
+    console.log('isPractice:', this.isPractice);
+    
+    // Check which screen we're on and get the appropriate element
+    const currentScreen = window.CCPTApp.currentScreen;
+    let testArea;
+    
+    if (currentScreen === 'nback-practice') {
+        testArea = document.getElementById('nback-practice-test-area');
+        console.log('Looking for practice test area...');
+    } else if (currentScreen === 'nback-test') {
+        testArea = document.getElementById('nback-main-test-area');
+        console.log('Looking for main test area...');
+    } else {
+        console.error('❌ Unknown screen:', currentScreen);
+    }
+    
+    console.log('🔍 Test area element:', testArea ? '✅ Found' : '❌ Not found');
+    
+    if (!testArea) {
+        console.error('❌ N-Back test area not found in DOM');
+        throw new Error('N-Back test area not found.');
     }
 
-    setupResponseHandling() {
-        // Remove existing listeners
-        if (this.responseHandler) {
-            document.removeEventListener('keydown', this.responseHandler);
-        }
+    // CRITICAL: Force test area to be visible with VERY high z-index
+    testArea.style.display = 'flex';
+    testArea.style.flexDirection = 'column';
+    testArea.style.alignItems = 'center';
+    testArea.style.justifyContent = 'center';
+    testArea.style.visibility = 'visible';
+    testArea.style.opacity = '1';
+    testArea.style.position = 'relative';
+    testArea.style.zIndex = '5000'; // VERY high to override everything
+    testArea.style.backgroundColor = '#f8f9fa'; // Light background
+    testArea.style.minHeight = '600px';
+    console.log('✅ Test area forced visible with z-index 5000');
 
-        // Create new response handler
-        this.responseHandler = (e) => {
-            if (e.code === 'Space' && this.isRunning) {
-                e.preventDefault();
-                this.recordResponse();
+    // Clear and setup grid with MAXIMUM visibility
+    const totalTrials = this.isPractice ? this.config.practiceTrials : this.config.totalTrials;
+    
+    testArea.innerHTML = `
+        <div class="nback-grid" id="nback-grid" style="
+            display: grid !important;
+            grid-template-columns: repeat(3, 1fr) !important;
+            gap: 12px !important;
+            width: 320px !important;
+            height: 320px !important;
+            margin: 40px auto !important;
+            padding: 25px !important;
+            background: white !important;
+            border: 4px solid #333 !important;
+            border-radius: 12px !important;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2) !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            position: relative !important;
+            z-index: 5001 !important;
+        ">
+            ${this.gridPositions.map(pos => 
+                `<div class="grid-cell" data-position="${pos.id}" style="
+                    background: #e9ecef !important;
+                    border: 3px solid #adb5bd !important;
+                    border-radius: 10px !important;
+                    min-width: 90px !important;
+                    min-height: 90px !important;
+                    width: 90px !important;
+                    height: 90px !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    transition: none !important;
+                    cursor: default !important;
+                    font-size: 24px !important;
+                    font-weight: bold !important;
+                    color: transparent !important;
+                ">${pos.id + 1}</div>`
+            ).join('')}
+        </div>
+        <div class="nback-instructions" style="text-align: center; margin-top: 30px; visibility: visible; position: relative; z-index: 5001;">
+            <p style="font-size: 18px; color: #333; margin-bottom: 20px; font-weight: 600;">
+                Press SPACEBAR when position matches ${this.config.nLevel}-back
+            </p>
+            <div class="trial-counter" id="trial-counter" style="
+                font-size: 24px !important;
+                font-weight: 800 !important;
+                color: #667eea !important;
+                padding: 15px 30px !important;
+                background: white !important;
+                border-radius: 12px !important;
+                display: inline-block !important;
+                border: 3px solid #667eea !important;
+                visibility: visible !important;
+                box-shadow: 0 4px 12px rgba(102,126,234,0.2) !important;
+            ">Trial: 0/${totalTrials}</div>
+        </div>
+    `;
+
+    // Store reference and verify
+    this.gridElement = document.getElementById('nback-grid');
+    console.log('Grid element stored:', this.gridElement ? '✅' : '❌');
+    
+    if (this.gridElement) {
+        const cells = this.gridElement.querySelectorAll('.grid-cell');
+        console.log(`✅ Found ${cells.length} grid cells`);
+        console.log('Grid z-index:', getComputedStyle(this.gridElement).zIndex);
+        console.log('Grid position:', getComputedStyle(this.gridElement).position);
+    }
+    
+    this.setupResponseHandling();
+    console.log('✅ N-Back test environment setup complete');
+    
+    // Debug: Log all elements with high z-index
+    setTimeout(() => {
+        const allElements = document.querySelectorAll('*');
+        const highZIndex = [];
+        allElements.forEach(el => {
+            const zIndex = parseInt(getComputedStyle(el).zIndex);
+            if (zIndex > 1000) {
+                highZIndex.push({ element: el.tagName + '.' + el.className, zIndex });
             }
-        };
+        });
+        console.log('🔍 Elements with z-index > 1000:', highZIndex);
+    }, 100);
+}
 
-        document.addEventListener('keydown', this.responseHandler);
+setupResponseHandling() {
+    console.log('🎮 Setting up response handling...');
+    
+    // Remove existing listeners
+    if (this.responseHandler) {
+        document.removeEventListener('keydown', this.responseHandler);
+        console.log('🧹 Removed old response handler');
     }
+
+    // Create new response handler
+    this.responseHandler = (e) => {
+        if (e.code === 'Space' && this.isRunning) {
+            e.preventDefault();
+            this.recordResponse();
+        }
+    };
+
+    document.addEventListener('keydown', this.responseHandler);
+    console.log('✅ Response handler attached');
+}
 
     // ===== SEQUENCE GENERATION =====
     generateSequence(numTrials, targetProbability) {
@@ -297,29 +376,56 @@ class NBackTestEngine {
         };
     }
 
-    // ===== STIMULUS DISPLAY =====
+// ===== STIMULUS DISPLAY =====
     showStimulus(position) {
-        // Query grid dynamically to ensure fresh reference
-        const grid = document.getElementById('nback-grid');
-        if (!grid) {
-            console.error('❌ Grid element not found when showing stimulus!');
-            return;
-        }
-        
-        const cells = grid.querySelectorAll('.grid-cell');
-        if (!cells || cells.length === 0) {
-            console.error('❌ No grid cells found!');
-            return;
-        }
-        
-        if (!cells[position]) {
-            console.error(`❌ Cell at position ${position} not found!`);
-            return;
-        }
-        
-        console.log(`💡 Lighting up cell ${position}`);
-        cells[position].classList.add('active');
+    // Query grid dynamically to ensure fresh reference
+    const grid = document.getElementById('nback-grid');
+    if (!grid) {
+        console.error('❌ Grid element not found when showing stimulus!');
+        return;
     }
+    
+    const cells = grid.querySelectorAll('.grid-cell');
+    if (!cells || cells.length === 0) {
+        console.error('❌ No grid cells found!');
+        return;
+    }
+    
+    if (!cells[position]) {
+        console.error(`❌ Cell at position ${position} not found!`);
+        return;
+    }
+    
+    console.log(`💡 Lighting up cell ${position}`);
+    
+    // Remove active class from all cells first
+    cells.forEach(cell => {
+        cell.classList.remove('active');
+        // Reset inline styles
+        cell.style.background = '#f8f9fa';
+        cell.style.transform = 'scale(1)';
+        cell.style.boxShadow = 'none';
+    });
+    
+    // Add active class and force MAXIMUM visibility with inline styles
+    const targetCell = cells[position];
+    targetCell.classList.add('active');
+    
+    // Apply inline styles for maximum visibility (overrides everything)
+    targetCell.style.background = '#667eea';
+    targetCell.style.borderColor = '#5a6fd8';
+    targetCell.style.transform = 'scale(1.3)';
+    targetCell.style.boxShadow = '0 0 40px rgba(102, 126, 234, 0.9)';
+    targetCell.style.zIndex = '100';
+    targetCell.style.position = 'relative';
+    targetCell.style.transition = 'none'; // Instant change
+    
+    // Force a reflow to ensure the style is applied immediately
+    void targetCell.offsetWidth;
+    
+    console.log(`✅ Cell ${position} activated with class:`, targetCell.className);
+    console.log(`✅ Cell ${position} inline styles:`, targetCell.style.cssText);
+}
 
     clearGrid() {
         const grid = document.getElementById('nback-grid');
@@ -334,9 +440,14 @@ class NBackTestEngine {
         if (counter) {
             const total = this.isPractice ? this.config.practiceTrials : this.config.totalTrials;
             counter.textContent = `Trial: ${this.currentTrial}/${total}`;
+            console.log(`🔢 Trial counter updated: ${this.currentTrial}/${total}`);
+        } else {
+            console.error('❌ Trial counter element not found!');
         }
     }
 
+    // ===== RESPONSE HANDLING =====
+    // (your next section continues here)
     // ===== RESPONSE HANDLING =====
     recordResponse() {
         if (!this.isRunning) return;
@@ -377,41 +488,54 @@ class NBackTestEngine {
 
     // ===== RESPONSE ANALYSIS =====
     analyzeTrialResponses(responses, isTarget) {
-        const stimulusResponses = responses.filter(r => r.phase === 'stimulus');
-        const responseMade = stimulusResponses.length > 0;
+    // Filter responses by phase
+    const stimulusResponses = responses.filter(r => r.phase === 'stimulus');
+    const isiResponses = responses.filter(r => r.phase === 'isi');
+    
+    const responseMade = stimulusResponses.length > 0;
+    
+    let responseTime = null;
+    let correct = false;
+    let responseType = '';
+    let responsePhase = null;
+    
+    if (responseMade) {
+        // Calculate response time correctly - it's the relativeTime of the response within the stimulus phase
+        responseTime = stimulusResponses[0].relativeTime;
+        responsePhase = 'stimulus';
         
-        let responseTime = null;
-        let correct = false;
-        let responseType = '';
-        
-        if (responseMade) {
-            responseTime = stimulusResponses[0].timestamp - (stimulusResponses[0].timestamp - this.config.stimulusDuration);
-            
-            if (isTarget) {
-                correct = true;
-                responseType = 'hit';
-            } else {
-                correct = false;
-                responseType = 'false_alarm';
-            }
+        // Determine if response was correct
+        if (isTarget) {
+            correct = true;  // Pressed spacebar on a target trial
+            responseType = 'hit';
         } else {
-            if (isTarget) {
-                correct = false;
-                responseType = 'miss';
-            } else {
-                correct = true;
-                responseType = 'correct_rejection';
-            }
+            correct = false;  // Pressed spacebar on a non-target trial
+            responseType = 'false_alarm';
         }
+    } else {
+        // No response made
+        responsePhase = null;
         
-        return {
-            responseMade,
-            responseTime,
-            responsePhase: responseMade ? stimulusResponses[0].phase : null,
-            correct,
-            responseType
-        };
+        if (isTarget) {
+            correct = false;  // Should have pressed but didn't
+            responseType = 'miss';
+        } else {
+            correct = true;  // Correctly withheld response on non-target
+            responseType = 'correct_rejection';
+        }
     }
+    
+    // Log for debugging
+    console.log(`📊 Trial Analysis: ${responseType} | Target: ${isTarget} | Response: ${responseMade} | Correct: ${correct}`);
+    
+    return {
+        responseMade,
+        responseTime,
+        responsePhase,
+        correct,
+        responseType
+    };
+}
 
     // ===== RESULTS ANALYSIS =====
     analyzePracticeResults(trialData) {
@@ -565,16 +689,36 @@ class NBackTestEngine {
 async showCountdown() {
     console.log('⏰ Starting N-Back countdown...');
     
+    // First, remove ANY existing overlays
+    document.querySelectorAll('.nback-overlay, [id*="countdown"]').forEach(el => {
+        console.log('🧹 Removing existing overlay:', el.id || el.className);
+        el.remove();
+    });
+    
     // Create temporary countdown overlay
     const overlay = document.createElement('div');
     overlay.className = 'nback-overlay';
+    overlay.id = 'nback-countdown-overlay-' + Date.now(); // Unique ID
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.9);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+    `;
     overlay.innerHTML = `
-        <div class="test-info">
-            <h3 id="nback-countdown-text">Test starting in 3...</h3>
-            <div class="test-reminder">Remember: Press SPACEBAR when position matches ${this.config.nLevel}-back</div>
+        <div class="test-info" style="text-align: center; color: white;">
+            <h3 id="nback-countdown-text" style="font-size: 2rem; margin-bottom: 20px;">Test starting in 3...</h3>
+            <div class="test-reminder" style="font-size: 1.2rem; opacity: 0.8;">Remember: Press SPACEBAR when position matches ${this.config.nLevel}-back</div>
         </div>
     `;
     document.body.appendChild(overlay);
+    console.log('✅ Countdown overlay created:', overlay.id);
     
     const countdownText = document.getElementById('nback-countdown-text');
     
@@ -589,22 +733,36 @@ async showCountdown() {
     }
     await new Promise(resolve => setTimeout(resolve, 500));
     
-    // Remove overlay
-    overlay.remove();
+    // CRITICAL: Multiple removal attempts with verification
+    console.log('🧹 Removing countdown overlay...');
+    
+    // Method 1: Direct removal
+    if (overlay && overlay.parentNode) {
+        overlay.parentNode.removeChild(overlay);
+        console.log('✅ Overlay removed via parentNode');
+    }
+    
+    // Method 2: Remove by ID
+    const overlayById = document.getElementById(overlay.id);
+    if (overlayById) {
+        overlayById.remove();
+        console.log('✅ Overlay removed by ID');
+    }
+    
+    // Method 3: Remove all overlays as backup
+    document.querySelectorAll('.nback-overlay').forEach(el => {
+        el.remove();
+        console.log('✅ Removed overlay via class selector:', el.id);
+    });
+    
+    // Verification
+    const remainingOverlays = document.querySelectorAll('.nback-overlay, [id*="countdown"]');
+    if (remainingOverlays.length > 0) {
+        console.error('❌ WARNING: Overlays still present:', remainingOverlays);
+        remainingOverlays.forEach(el => el.remove());
+    } else {
+        console.log('✅ All overlays confirmed removed');
+    }
+    
     console.log('✅ N-Back countdown complete');
-}
-
-    // ===== PUBLIC INTERFACE =====
-    isAnySessionRunning() {
-        return this.isRunning;
-    }
-
-    getTrialData() {
-        return this.trialData;
-    }
-
-    forceStop() {
-        console.log('🛑 Force stopping N-Back test...');
-        this.cleanup();
-    }
-}
+}}

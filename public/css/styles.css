@@ -1564,8 +1564,81 @@ body.test-mode * {
     min-height: 80px;
 }
 
-/* Make sure grid background is light for contrast */
+/* ADD or UPDATE these styles in your styles.css file */
+
+/* N-Back Grid Container - Force Visibility */
 #nback-test .nback-grid,
 #nback-practice .nback-grid {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 10px !important;
+    width: 300px !important;
+    height: 300px !important;
+    margin: 30px auto !important;
+    padding: 20px !important;
     background: white !important;
+    border-radius: 10px !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/* N-Back Grid Cells - Default State */
+#nback-test .grid-cell,
+#nback-practice .grid-cell {
+    background: #f8f9fa !important;
+    border: 2px solid #dee2e6 !important;
+    border-radius: 8px !important;
+    min-width: 80px !important;
+    min-height: 80px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: all 0.05s ease !important;
+    cursor: default !important;
+}
+
+/* N-Back Grid Cells - ACTIVE State (Stimulus Visible) */
+#nback-test .grid-cell.active,
+#nback-practice .grid-cell.active {
+    background: #667eea !important;
+    border-color: #5a6fd8 !important;
+    transform: scale(1.2) !important;
+    box-shadow: 0 0 30px rgba(102, 126, 234, 0.8) !important;
+    z-index: 10 !important;
+    position: relative !important;
+}
+
+/* Ensure test areas are always visible */
+#nback-practice-test-area,
+#nback-main-test-area {
+    display: block !important;
+    visibility: visible !important;
+    min-height: 500px !important;
+}
+
+/* Trial Counter Visibility */
+.trial-counter {
+    font-size: 20px !important;
+    font-weight: 700 !important;
+    color: #667eea !important;
+    padding: 12px 20px !important;
+    background: #f8f9fa !important;
+    border-radius: 8px !important;
+    display: inline-block !important;
+    margin-top: 20px !important;
+    border: 2px solid #dee2e6 !important;
+}
+
+/* Instructions visibility */
+.nback-instructions {
+    text-align: center !important;
+    margin-top: 20px !important;
+    visibility: visible !important;
+}
+
+.nback-instructions p {
+    font-size: 16px !important;
+    color: #495057 !important;
+    margin-bottom: 15px !important;
 }
