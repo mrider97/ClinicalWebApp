@@ -419,6 +419,7 @@ setupResponseHandling() {
     cells.forEach(cell => {
         cell.classList.remove('active');
         cell.style.background = '#f8f9fa';
+        cell.style.borderColor = '#dee2e6';
         cell.style.transform = 'scale(1)';
         cell.style.boxShadow = 'none';
     });
@@ -429,7 +430,7 @@ setupResponseHandling() {
     
     targetCell.style.background = '#667eea';
     targetCell.style.borderColor = '#5a6fd8';
-    targetCell.style.transform = 'scale(1.3)';
+    targetCell.style.transform = 'none';
     targetCell.style.boxShadow = '0 0 40px rgba(102, 126, 234, 0.9)';
     targetCell.style.zIndex = '100';
     targetCell.style.position = 'relative';
@@ -441,11 +442,17 @@ setupResponseHandling() {
 }
 
 clearGrid() {
-    // Use stored grid reference instead of getElementById
     if (!this.gridElement) return;
     
     const cells = this.gridElement.querySelectorAll('.grid-cell');
-    cells.forEach(cell => cell.classList.remove('active'));
+    cells.forEach(cell => {
+        cell.classList.remove('active');
+        // Force reset all styles to default
+        cell.style.background = '#f8f9fa';
+        cell.style.borderColor = '#dee2e6';
+        cell.style.transform = 'none';
+        cell.style.boxShadow = 'none';
+    });
 }
 
 updateTrialCounter() {
