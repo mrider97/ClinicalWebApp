@@ -20,22 +20,26 @@ class NBackTestEngine {
     }
 
     reset() {
-        this.isRunning = false;
-        this.isPractice = false;
-        this.currentTrial = 0;
-        this.trialData = [];
-        this.stimulusSequence = [];
-        this.startTime = null;
-        
-        // Grid state
-        this.gridPositions = this.generateGridPositions();
-        this.stimulusHistory = []; // Track last N positions for target detection
-        
-        // DOM elements
-        this.gridElement = null;
-        this.activeTimers = new Set();
-        this.responseHandler = null;
-    }
+    this.isRunning = false;
+    this.isPractice = false;
+    this.currentTrial = 0;  // Start at 0
+    this.trialData = [];
+    this.stimulusSequence = [];
+    this.startTime = null;
+    
+    // Grid state
+    this.gridPositions = this.generateGridPositions();
+    this.stimulusHistory = [];
+    
+    // DOM elements - clear references
+    this.gridElement = null;
+    this.counterElement = null;
+    this.testArea = null;
+    this.activeTimers = new Set();
+    this.responseHandler = null;
+    
+    console.log('🔄 N-Back engine reset complete');
+}
 
     // ===== GRID SETUP =====
     generateGridPositions() {
@@ -204,59 +208,73 @@ setupResponseHandling() {
 }
 
     // ===== SEQUENCE GENERATION =====
-    generateSequence(numTrials, targetProbability) {
-        console.log(`📝 Generating N-Back sequence: ${numTrials} trials, ${(targetProbability * 100)}% targets`);
-        
-        const sequence = [];
-        const positions = [];
-        
-        // Generate initial N positions randomly
-        for (let i = 0; i < this.config.nLevel; i++) {
-            positions.push(Math.floor(Math.random() * this.gridPositions.length));
-        }
 
-        // Generate remaining trials with target probability control
-        for (let trial = 0; trial < numTrials; trial++) {
-            let position;
-            let isTarget = false;
+// ===== FIXED SEQUENCE GENERATION =====
+// Replace the generateSequence method in your nback-test.js file
 
-            if (trial >= this.config.nLevel) {
-                // Decide if this should be a target
-                const shouldBeTarget = Math.random() < targetProbability;
-                
-                if (shouldBeTarget) {
-                    // Make it a target (same as N-back position)
-                    position = positions[trial - this.config.nLevel];
-                    isTarget = true;
-                } else {
-                    // Make it a non-target (different from N-back position)
-                    const nBackPosition = positions[trial - this.config.nLevel];
-                    const availablePositions = this.gridPositions
-                        .map(p => p.id)
-                        .filter(id => id !== nBackPosition);
-                    
-                    position = availablePositions[Math.floor(Math.random() * availablePositions.length)];
-                    isTarget = false;
-                }
-            } else {
-                // First N trials cannot be targets
-                position = Math.floor(Math.random() * this.gridPositions.length);
-                isTarget = false;
-            }
+generateSequence(numTrials, targetProbability) {
+    console.log(`📝 Generating N-Back sequence: ${numTrials} trials, ${(targetProbability * 100)}% targets`);
+    
+    const sequence = [];
+    const positions = []; // This will store position indices (0-8 for 3x3 grid)
+    
+    // DO NOT pre-populate positions array! Each trial's position goes in as we generate it
 
-            positions.push(position);
+    // Generate remaining trials with target probability control
+    for (let trial = 0; trial < numTrials; trial++) {
+        let position;
+        let isTarget = false;
+
+        if (trial >= this.config.nLevel) {
+            // This trial CAN be a target (we have N-back history)
+            const nBackPosition = positions[trial - this.config.nLevel];
+            const shouldBeTarget = Math.random() < targetProbability;
             
-            sequence.push({
-                trialNumber: trial + 1,
-                position: position,
-                isTarget: isTarget,
-                nBackPosition: trial >= this.config.nLevel ? positions[trial - this.config.nLevel] : null
-            });
+            if (shouldBeTarget) {
+                // Make it a target (SAME as N-back position)
+                position = nBackPosition;
+                isTarget = true;
+                console.log(`🎯 Trial ${trial + 1}: TARGET at position ${position} (matches trial ${trial + 1 - this.config.nLevel} which was also position ${nBackPosition})`);
+            } else {
+                // Make it a non-target (DIFFERENT from N-back position)
+                // Get all positions except the N-back position
+                const availablePositions = [];
+                for (let i = 0; i < this.gridPositions.length; i++) {
+                    if (i !== nBackPosition) {
+                        availablePositions.push(i);
+                    }
+                }
+                
+                // Randomly select from available positions
+                position = availablePositions[Math.floor(Math.random() * availablePositions.length)];
+                isTarget = false;
+                console.log(`➖ Trial ${trial + 1}: non-target at position ${position} (n-back trial ${trial + 1 - this.config.nLevel} was at position ${nBackPosition})`);
+            }
+        } else {
+            // First N trials CANNOT be targets (no history yet)
+            position = Math.floor(Math.random() * this.gridPositions.length);
+            isTarget = false;
+            console.log(`➖ Trial ${trial + 1}: non-target at position ${position} (initial trial - no history)`);
         }
 
-        console.log(`✅ Generated sequence with ${sequence.filter(t => t.isTarget).length} targets`);
-        return sequence;
+        // Store this position in history
+        positions.push(position);
+        
+        // Add to sequence
+        sequence.push({
+            trialNumber: trial + 1,
+            position: position,
+            isTarget: isTarget,
+            nBackPosition: trial >= this.config.nLevel ? positions[trial - this.config.nLevel] : null
+        });
     }
+
+    const targetCount = sequence.filter(t => t.isTarget).length;
+    const actualTargetRate = (targetCount / numTrials * 100).toFixed(1);
+    console.log(`✅ Generated sequence: ${targetCount} targets (${actualTargetRate}% of ${numTrials} trials)`);
+    
+    return sequence;
+}
 
     // ===== TEST EXECUTION =====
     async runPractice() {
@@ -324,30 +342,37 @@ setupResponseHandling() {
 }
 
     async executeTrialSequence(sequence, isPractice) {
-        console.log(`▶️ Executing ${sequence.length} N-Back trials...`);
+    console.log(`▶️ Executing ${sequence.length} trials (isPractice: ${isPractice})...`);
+    
+    const trialData = [];
+    this.stimulusSequence = sequence;
+    
+    // Initialize trial counter
+    this.currentTrial = 0;
+    this.updateTrialCounter();
+    
+    for (let i = 0; i < sequence.length && this.isRunning; i++) {
+        // Update trial number BEFORE executing
+        this.currentTrial = i + 1;
+        this.updateTrialCounter();
         
-        const trialData = [];
-        this.stimulusSequence = sequence;
-        
-        for (let i = 0; i < sequence.length && this.isRunning; i++) {
-            this.currentTrial = i + 1;
+        try {
+            const trial = sequence[i];
+            console.log(`\n=== Starting Trial ${this.currentTrial}/${sequence.length} ===`);
+            const result = await this.executeSingleTrial(trial, isPractice);
+            trialData.push(result);
             
-            try {
-                const trial = sequence[i];
-                const result = await this.executeSingleTrial(trial, isPractice);
-                trialData.push(result);
-                
-                // Update trial counter
-                this.updateTrialCounter();
-                
-            } catch (error) {
-                console.error(`❌ Trial ${i + 1} failed:`, error);
-                // Continue with next trial
-            }
+            console.log(`=== Completed Trial ${this.currentTrial}/${sequence.length} ===\n`);
+            
+        } catch (error) {
+            console.error(`❌ Trial ${this.currentTrial} failed:`, error);
+            // Continue with next trial
         }
-        
-        return trialData;
     }
+    
+    console.log(`✅ Trial sequence completed: ${trialData.length} trials executed`);
+    return trialData;
+}
 
     async executeSingleTrial(trial, isPractice) {
         console.log(`🎯 N-Back Trial ${trial.trialNumber}: Position ${trial.position} (target: ${trial.isTarget})`);
@@ -456,14 +481,19 @@ clearGrid() {
 }
 
 updateTrialCounter() {
-    // Use stored counter reference
-    if (this.counterElement) {
-        const total = this.isPractice ? this.config.practiceTrials : this.config.totalTrials;
-        this.counterElement.textContent = `Trial: ${this.currentTrial}/${total}`;
-        console.log(`📢 Trial counter updated: ${this.currentTrial}/${total}`);
-    } else {
+    if (!this.counterElement) {
         console.error('❌ Trial counter element not found!');
+        return;
     }
+    
+    // Determine the total based on current test mode
+    const total = this.isPractice ? this.config.practiceTrials : this.config.totalTrials;
+    
+    // Update the counter text
+    const counterText = `Trial: ${this.currentTrial}/${total}`;
+    this.counterElement.textContent = counterText;
+    
+    console.log(`📢 Counter updated: ${counterText} (isPractice: ${this.isPractice})`);
 }
 
     // ===== RESPONSE HANDLING =====
