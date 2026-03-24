@@ -1,5 +1,6 @@
-node_modules/ 
-.DS_Store 
-.env 
-*.log 
-.firebase/ 
+node_modules/
+.DS_Store
+.env
+*.log
+.firebase/
+public/js/firebase-config.js
