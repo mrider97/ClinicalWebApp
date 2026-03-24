@@ -386,75 +386,41 @@
         <section id="test-funnel" class="screen">
             <div class="container">
                 <header>
-                    <h2>Test Session</h2>
-                    <p id="session-label">Complete both tests to finish your session</p>
+                    <h2>🧪 Test Session</h2>
+                    <p>Complete both tests to finish your session</p>
                 </header>
-
-                <!-- Pre-test checklist (shown only before first test starts) -->
-                <div id="pre-test-checklist" class="pre-test-checklist">
-                    <h3>Before you begin, please confirm:</h3>
-                    <div class="checklist-items">
-                        <label class="checklist-item">
-                            <input type="checkbox" class="checklist-cb" id="chk-quiet">
-                            I am in a quiet room with no distractions
-                        </label>
-                        <label class="checklist-item">
-                            <input type="checkbox" class="checklist-cb" id="chk-dnd">
-                            I have set my phone and computer to Do Not Disturb / silent
-                        </label>
-                        <label class="checklist-item">
-                            <input type="checkbox" class="checklist-cb" id="chk-fullscreen">
-                            My browser window is maximised (or full-screen)
-                        </label>
-                        <label class="checklist-item">
-                            <input type="checkbox" class="checklist-cb" id="chk-charged">
-                            My device is plugged in or fully charged
-                        </label>
-                        <label class="checklist-item">
-                            <input type="checkbox" class="checklist-cb" id="chk-alcohol">
-                            I have not consumed alcohol or recreational drugs in the past 24 hours
-                        </label>
-                        <label class="checklist-item">
-                            <input type="checkbox" class="checklist-cb" id="chk-meds">
-                            I am not taking any medication today that may affect concentration or alertness (or I have informed the researcher)
-                        </label>
-                    </div>
-                    <p id="checklist-error" class="error-message" style="display:none;">
-                        Please tick all boxes before continuing.
-                    </p>
-                </div>
-
+                
                 <div class="test-funnel-container">
                     <!-- Progress Bar -->
                     <div class="test-progress-bar">
                         <div class="test-progress-fill" style="width: 0%;"></div>
                     </div>
-
+                    
                     <!-- CCPT Test Card -->
                     <div id="ccpt-card" class="test-card">
-                        <h3>Continuous Performance Test (CCPT)</h3>
+                        <h3>🎯 Continuous Performance Test (CCPT)</h3>
                         <div class="test-description">
-                            Measures sustained attention and response inhibition.
-                            You will respond to target letters while ignoring distractors.
+                            Measures sustained attention and response inhibition. 
+                            You'll respond to target letters while ignoring distractors.
                         </div>
-                        <div class="test-duration">Duration: ~5–8 minutes</div>
+                        <div class="test-duration">⏱️ Duration: ~5-8 minutes</div>
                         <div class="test-status pending">Pending</div>
                     </div>
-
+                    
                     <!-- N-Back Test Card -->
                     <div id="nback-card" class="test-card">
-                        <h3>N-Back Working Memory Test</h3>
+                        <h3>🧠 N-Back Working Memory Test</h3>
                         <div class="test-description">
-                            Measures working memory capacity. You will identify when positions
+                            Measures working memory capacity. You'll identify when positions 
                             match those from N steps back.
                         </div>
-                        <div class="test-duration">Duration: ~5–7 minutes</div>
+                        <div class="test-duration">⏱️ Duration: ~5-7 minutes</div>
                         <div class="test-status pending">Pending</div>
                     </div>
-
+                    
                     <!-- Action Buttons -->
                     <div class="form-actions text-center">
-                        <button id="continue-test-btn" class="btn btn-primary btn-large" onclick="startNextTestWithChecklist()">
+                        <button id="continue-test-btn" class="btn btn-primary btn-large" onclick="startNextTest()">
                             Start First Test
                         </button>
                         <button id="view-results-btn" class="btn btn-success btn-large" onclick="showScreen('final-results')" style="display: none;">
@@ -750,207 +716,13 @@
                 </div>
             </div>
         </section>
-
-        <!-- CONSENT SCREEN -->
-        <section id="consent-screen" class="screen">
-            <div class="container">
-                <header class="text-center">
-                    <h2>Informed Consent</h2>
-                    <p>Please read the following information carefully before participating.</p>
-                </header>
-
-                <div id="consent-text-box" class="consent-text-box">
-                    <h3>Study Information</h3>
-                    <p><strong>Purpose:</strong> This study investigates cognitive performance using validated computerised assessments. Your participation will contribute to research on attention and working memory.</p>
-
-                    <h3>What You Will Be Asked to Do</h3>
-                    <p>You will complete two short computerised cognitive tests:</p>
-                    <ul>
-                        <li><strong>Continuous Performance Test (CCPT)</strong> — approximately 5–8 minutes. You will respond to target letters displayed on screen.</li>
-                        <li><strong>N-Back Working Memory Test</strong> — approximately 5–7 minutes. You will identify repeated positions in a grid sequence.</li>
-                    </ul>
-                    <p>Each test includes a brief practice session before the main test begins.</p>
-
-                    <h3>Risks and Benefits</h3>
-                    <p>There are no known risks beyond mild mental fatigue. Your participation may directly benefit the scientific understanding of cognitive assessment and indirectly benefit future research participants.</p>
-
-                    <h3>Confidentiality</h3>
-                    <p>Your data are stored securely using your participant number only — no names or personal identifiers are collected. Data are accessible only to authorised members of the research team. Results may be published in aggregate, anonymised form.</p>
-
-                    <h3>Voluntary Participation</h3>
-                    <p>Your participation is entirely voluntary. You may withdraw at any time by closing your browser window. Withdrawal will not affect your relationship with the research team or any benefits to which you are entitled.</p>
-
-                    <h3>Contact</h3>
-                    <p>If you have questions about this study, please contact the researcher using the information provided in your study invitation email.</p>
-
-                    <h3>Data Retention</h3>
-                    <p>Your anonymised data will be retained for a minimum of 5 years in accordance with institutional research data management policy.</p>
-
-                    <p style="margin-top: 24px;"><em>Scroll to the bottom to enable the consent checkbox.</em></p>
-                </div>
-
-                <form id="consent-form" class="consent-form">
-                    <div class="form-group consent-checkbox-group">
-                        <label>
-                            <input type="checkbox" id="consent-checkbox" disabled>
-                            I have read and understood the above information and I voluntarily agree to participate in this study.
-                        </label>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="consent-confirm-id">Confirm your Participant ID</label>
-                        <input type="text" id="consent-confirm-id" placeholder="e.g. P001" autocomplete="off" required>
-                        <small class="form-help">Enter your participant number exactly as shown at the top of this page.</small>
-                    </div>
-
-                    <div id="consent-error" class="error-message" style="display: none;"></div>
-
-                    <div class="form-actions text-center">
-                        <button type="submit" id="consent-agree-btn" class="btn btn-primary btn-large" disabled>
-                            I Agree — Continue
-                        </button>
-                        <button type="button" class="btn btn-secondary" onclick="logout()">
-                            Cancel / Logout
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </section>
-
-        <!-- ENVIRONMENT CHECK SCREEN -->
-        <section id="environment-check" class="screen">
-            <div class="container">
-                <header class="text-center">
-                    <h2>Environment Check</h2>
-                    <p>We need to verify your setup before the tests begin.</p>
-                </header>
-
-                <div id="env-check-results" class="env-check-results">
-                    <div class="env-check-running">
-                        <div class="spinner-small"></div>
-                        <p>Running checks...</p>
-                    </div>
-                </div>
-
-                <div id="env-check-keyboard-test" class="env-check-keyboard" style="display: none;">
-                    <p><strong>Keyboard test:</strong> Press the <kbd>SPACEBAR</kbd> now to confirm your keyboard is working.</p>
-                    <div id="env-keyboard-status" class="env-keyboard-status">Waiting for spacebar...</div>
-                </div>
-
-                <div id="env-check-actions" class="form-actions text-center" style="display: none;">
-                    <button id="env-proceed-btn" class="btn btn-primary btn-large" onclick="proceedFromEnvironmentCheck()" disabled>
-                        Continue to Tests
-                    </button>
-                </div>
-            </div>
-        </section>
-
-        <!-- INTER-TEST REST SCREEN -->
-        <section id="inter-test-rest" class="screen">
-            <div class="container text-center">
-                <header>
-                    <h2>Well Done!</h2>
-                    <p>You have completed the first test. Please take a short break before continuing.</p>
-                </header>
-
-                <div class="rest-timer-container">
-                    <div id="rest-countdown" class="rest-countdown">60</div>
-                    <p class="rest-label">seconds remaining</p>
-                </div>
-
-                <div class="rest-instructions">
-                    <p>Relax your eyes. Look away from the screen for a moment.</p>
-                    <p>The next test will begin automatically when the timer reaches zero,<br>or you may continue early.</p>
-                </div>
-
-                <div class="form-actions text-center" style="margin-top: 24px;">
-                    <button class="btn btn-primary btn-large" onclick="startNextTest()" id="rest-continue-btn">
-                        Continue Now
-                    </button>
-                </div>
-            </div>
-        </section>
-
-        <!-- POST-SESSION QUESTIONNAIRE -->
-        <section id="post-session-questionnaire" class="screen">
-            <div class="container">
-                <header class="text-center">
-                    <h2>Almost Done!</h2>
-                    <p>Please answer a few quick questions about your testing experience.</p>
-                </header>
-
-                <form id="post-session-form" class="post-session-form">
-                    <div class="form-section">
-                        <div class="form-group">
-                            <label>How alert did you feel during the tests?</label>
-                            <div class="likert-scale">
-                                <span class="likert-label-left">Very drowsy</span>
-                                <label><input type="radio" name="alertness" value="1" required> 1</label>
-                                <label><input type="radio" name="alertness" value="2"> 2</label>
-                                <label><input type="radio" name="alertness" value="3"> 3</label>
-                                <label><input type="radio" name="alertness" value="4"> 4</label>
-                                <label><input type="radio" name="alertness" value="5"> 5</label>
-                                <span class="likert-label-right">Very alert</span>
-                            </div>
-                        </div>
-
-                        <div class="form-group">
-                            <label>How comfortable was your testing environment?</label>
-                            <div class="likert-scale">
-                                <span class="likert-label-left">Very uncomfortable</span>
-                                <label><input type="radio" name="comfort" value="1" required> 1</label>
-                                <label><input type="radio" name="comfort" value="2"> 2</label>
-                                <label><input type="radio" name="comfort" value="3"> 3</label>
-                                <label><input type="radio" name="comfort" value="4"> 4</label>
-                                <label><input type="radio" name="comfort" value="5"> 5</label>
-                                <span class="likert-label-right">Very comfortable</span>
-                            </div>
-                        </div>
-
-                        <div class="form-group">
-                            <label>Were you interrupted during the tests?</label>
-                            <div class="radio-group">
-                                <label><input type="radio" name="interrupted" value="no" required> No</label>
-                                <label><input type="radio" name="interrupted" value="yes"> Yes</label>
-                            </div>
-                            <textarea id="interrupted-details" name="interruptedDetails" rows="2"
-                                placeholder="If yes, briefly describe the interruption (optional)"
-                                style="display: none; margin-top: 8px;"></textarea>
-                        </div>
-
-                        <div class="form-group">
-                            <label>Did you experience any technical issues?</label>
-                            <div class="radio-group">
-                                <label><input type="radio" name="technicalIssues" value="no" required> No</label>
-                                <label><input type="radio" name="technicalIssues" value="yes"> Yes</label>
-                            </div>
-                            <textarea id="technical-details" name="technicalDetails" rows="2"
-                                placeholder="If yes, briefly describe the issue (optional)"
-                                style="display: none; margin-top: 8px;"></textarea>
-                        </div>
-                    </div>
-
-                    <div class="form-actions text-center">
-                        <button type="submit" class="btn btn-primary btn-large">
-                            Submit &amp; View Results
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </section>
     </main>
-
-    <!-- Scripts: load order matters — app.js must be last -->
-    <script src="/js/firebase-config.js"></script>
-    <script src="/js/audit.js"></script>
-    <script src="/js/auth.js"></script>
-    <script src="/js/consent.js"></script>
-    <script src="/js/environment-check.js"></script>
-    <script src="/js/quality-flags.js"></script>
-    <script src="/js/export.js"></script>
-    <script src="/js/ccpt-test.js"></script>
-    <script src="/js/nback-test.js"></script>
+    
+    <!-- Scripts -->
     <script src="/js/app.js"></script>
+    <script src="/js/ccpt-test.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/nback-test.js"></script>
     
     <script>
         // Initialize app when DOM is loaded

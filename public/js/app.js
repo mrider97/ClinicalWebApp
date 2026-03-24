@@ -1,15 +1,5 @@
-// ===== CLINICAL TRIAL APPLICATION =====
-
-// ===== APP LOGGER =====
-// Replace console.log with AppLogger.debug() so debug output can be toggled.
-// Enable by appending ?debug=true to the URL.
-const _debugEnabled = new URLSearchParams(window.location.search).get('debug') === 'true';
-const AppLogger = {
-    debug: (...args) => { if (_debugEnabled) console.log(...args); },
-    warn:  (...args) => console.warn(...args),
-    error: (...args) => console.error(...args)
-};
-window.AppLogger = AppLogger;
+// ===== CLINICAL TRIAL APPLICATION - COMPLETE REWRITE =====
+// Replace your entire app.js with this clean version
 
 // ===== GLOBAL APPLICATION STATE =====
 window.CCPTApp = {
@@ -58,7 +48,7 @@ window.CCPTApp = {
 
 // ===== INITIALIZATION =====
 function initializeApp() {
-    AppLogger.debug('🚀 Initializing Clinical Trial Application...');
+    console.log('🚀 Initializing Clinical Trial Application...');
     
     hideLoadingScreen();
     initializeFirebase();
@@ -66,30 +56,33 @@ function initializeApp() {
     // Initialize authentication system
     if (!window.AuthSystem) {
         window.AuthSystem = new AuthSystem();
-        AppLogger.debug('✅ Authentication system initialized');
+        console.log('✅ Authentication system initialized');
     }
     
     setupEventListeners();
     showScreen('login-screen');
     
-    AppLogger.debug('✅ Application initialized successfully');
+    console.log('✅ Application initialized successfully');
 }
 
 function initializeFirebase() {
-    if (!window.FIREBASE_CONFIG) {
-        console.error('❌ Firebase config missing. Copy firebase-config.example.js to firebase-config.js and fill in credentials.');
-        window.CCPTApp.db = null;
-        return;
-    }
-
+    const firebaseConfig = {
+        apiKey: "AIzaSyCstQjKap6OjGV4_KNWoPW8eG1eWJt9J0E",
+        authDomain: "ccpt-test-f3da0.firebaseapp.com",
+        projectId: "ccpt-test-f3da0",
+        storageBucket: "ccpt-test-f3da0.firebasestorage.app",
+        messagingSenderId: "501214918316",
+        appId: "1:501214918316:web:b0534507f678d9e804d109"
+    };
+    
     try {
-        firebase.initializeApp(window.FIREBASE_CONFIG);
+        firebase.initializeApp(firebaseConfig);
         window.CCPTApp.db = firebase.firestore();
-        AppLogger.debug('✅ Firebase initialized successfully');
+        console.log('✅ Firebase initialized successfully');
         
         // Test Firebase connection
         window.CCPTApp.db.collection('test_sessions').limit(1).get()
-            .then(() => AppLogger.debug('✅ Firebase connection verified'))
+            .then(() => console.log('✅ Firebase connection verified'))
             .catch((error) => {
                 console.warn('⚠️ Firebase connection issue (continuing without cloud storage):', error.message);
                 window.CCPTApp.db = null;
@@ -168,30 +161,21 @@ async function handleLogin(e) {
     
     try {
         const user = await window.AuthSystem.authenticate(participantNumber, pin);
-
+        
         window.CCPTApp.currentUser = user;
         window.CCPTApp.isLoggedIn = true;
-
-        // Generate a session group ID for grouping tests from the same visit
-        window.CCPTApp.sessionGroupId = `${user.participantNumber}_${new Date().toISOString().slice(0, 10)}`;
-
-        const eventType = user.permissions === 'admin'
-            ? AuditLogger.EVENTS.ADMIN_LOGIN
-            : AuditLogger.EVENTS.PARTICIPANT_LOGIN;
-        AuditLogger.log(eventType, { participantId: user.participantNumber, studyGroup: user.studyGroup });
-
+        
         displayUserInfo();
-
+        
         if (window.AuthSystem.isAdmin()) {
             showScreen('admin-dashboard');
         } else {
-            showScreen('consent-screen');
+            showScreen('test-funnel');
         }
-
+        
         errorElement.style.display = 'none';
-
+        
     } catch (error) {
-        AuditLogger.log(AuditLogger.EVENTS.LOGIN_FAILED, { attemptedId: participantNumber });
         console.error('❌ Login failed:', error);
         errorElement.textContent = error.message;
         errorElement.style.display = 'block';
@@ -216,19 +200,15 @@ function displayUserInfo() {
 }
 
 function logout() {
-    if (window.CCPTApp.currentUser) {
-        AuditLogger.log(AuditLogger.EVENTS.LOGOUT, { participantId: window.CCPTApp.currentUser.participantNumber });
-    }
     window.AuthSystem.logout();
     window.CCPTApp.currentUser = null;
     window.CCPTApp.isLoggedIn = false;
-    window.CCPTApp.sessionGroupId = null;
-
+    
     resetTestFunnelProgress();
-
+    
     const userInfo = document.getElementById('user-info');
     if (userInfo) userInfo.remove();
-
+    
     showScreen('login-screen');
 }
 
@@ -240,7 +220,7 @@ function showScreen(screenId) {
         return;
     }
     
-    AppLogger.debug(`📺 Showing screen: ${screenId}`);
+    console.log(`📺 Showing screen: ${screenId}`);
     
     // Hide all screens
     document.querySelectorAll('.screen').forEach(screen => {
@@ -262,20 +242,8 @@ function showScreen(screenId) {
         case 'login-screen':
             setupLoginScreen();
             break;
-        case 'consent-screen':
-            ConsentManager.setupConsentScreen();
-            break;
-        case 'environment-check':
-            EnvironmentChecker.runAndDisplay();
-            break;
         case 'test-funnel':
             setupTestFunnel();
-            break;
-        case 'inter-test-rest':
-            startInterTestRest();
-            break;
-        case 'post-session-questionnaire':
-            setupPostSessionQuestionnaire();
             break;
         case 'admin-dashboard':
             setupAdminDashboard();
@@ -293,7 +261,7 @@ function showScreen(screenId) {
 }
 
 function goHome() {
-    AppLogger.debug('🏠 Going home...');
+    console.log('🏠 Going home...');
     
     // Check for running tests
     const anySessionRunning = window.CCPTApp.isTestInProgress || 
@@ -348,43 +316,10 @@ function setupLoginScreen() {
 
 function setupTestFunnel() {
     updateTestFunnelDisplay();
-
-    // Show checklist only before the very first test; hide after CCPT is done
-    const checklist = document.getElementById('pre-test-checklist');
-    const progress = window.CCPTApp.testFunnelProgress;
-    const anyDone = progress.ccpt.completed || progress.nback.completed;
-    if (checklist) checklist.style.display = anyDone ? 'none' : 'block';
-
-    // Update session label with session number if available
-    const sessionLabel = document.getElementById('session-label');
-    if (sessionLabel && window.CCPTApp.currentUser) {
-        const gid = window.CCPTApp.sessionGroupId;
-        if (gid) sessionLabel.textContent = `Session ${gid.split('_')[1] || ''} — Complete both tests to finish`;
-    }
-}
-
-function startNextTestWithChecklist() {
-    const progress = window.CCPTApp.testFunnelProgress;
-    const anyDone = progress.ccpt.completed || progress.nback.completed;
-
-    // Only enforce checklist before the first test
-    if (!anyDone) {
-        const checkboxes = document.querySelectorAll('.checklist-cb');
-        const allChecked = Array.from(checkboxes).every(cb => cb.checked);
-        if (!allChecked) {
-            const errEl = document.getElementById('checklist-error');
-            if (errEl) errEl.style.display = 'block';
-            return;
-        }
-        const errEl = document.getElementById('checklist-error');
-        if (errEl) errEl.style.display = 'none';
-    }
-
-    startNextTest();
 }
 
 function setupCCPTPracticeScreen() {
-    AppLogger.debug('🎯 Setting up CCPT practice screen...');
+    console.log('🎯 Setting up CCPT practice screen...');
     
     // Update target display
     const targetDisplay = document.getElementById('ccpt-target-display');
@@ -406,7 +341,7 @@ function setupCCPTPracticeScreen() {
 }
 
 function setupNBackPracticeScreen() {
-    AppLogger.debug('🧠 Setting up N-Back practice screen...');
+    console.log('🧠 Setting up N-Back practice screen...');
     
     // Update N-level display
     const levelDisplay = document.getElementById('nback-level-display');
@@ -538,7 +473,7 @@ function startNextTest() {
 
 // ===== CCPT TEST FLOW =====
 function startCCPTTest() {
-    AppLogger.debug('🎯 Starting CCPT test flow...');
+    console.log('🎯 Starting CCPT test flow...');
     
     const config = {
         participantId: window.CCPTApp.currentUser.participantNumber,
@@ -553,7 +488,7 @@ function startCCPTTest() {
 }
 
 async function runCCPTPractice() {
-    AppLogger.debug('▶️ Running CCPT Practice...');
+    console.log('▶️ Running CCPT Practice...');
     
     // Check if user is logged in
     if (!window.CCPTApp.isLoggedIn || !window.CCPTApp.currentUser) {
@@ -565,7 +500,7 @@ async function runCCPTPractice() {
     
     // Initialize CCPT engine if it doesn't exist
     if (!window.CCPTApp.ccptEngine) {
-        AppLogger.debug('🔧 Initializing CCPT engine...');
+        console.log('🔧 Initializing CCPT engine...');
         
         const config = {
             participantId: window.CCPTApp.currentUser.participantNumber,
@@ -574,7 +509,7 @@ async function runCCPTPractice() {
         
         try {
             window.CCPTApp.ccptEngine = new CCPTTestEngine(config);
-            AppLogger.debug('✅ CCPT Engine initialized successfully');
+            console.log('✅ CCPT Engine initialized successfully');
         } catch (error) {
             console.error('❌ Failed to initialize CCPT Engine:', error);
             showError('Failed to initialize CCPT test. Please try again.');
@@ -593,9 +528,9 @@ async function runCCPTPractice() {
         if (stimulusArea) stimulusArea.style.display = 'block';
         
         // Run the practice
-        AppLogger.debug('🎯 Starting practice session...');
+        console.log('🎯 Starting practice session...');
         const results = await window.CCPTApp.ccptEngine.runPractice();
-        AppLogger.debug('✅ CCPT Practice completed:', results);
+        console.log('✅ CCPT Practice completed:', results);
         
         // Restore UI
         if (stimulusArea) stimulusArea.style.display = 'none';
@@ -621,31 +556,18 @@ async function runCCPTPractice() {
 }
 
 async function runCCPTMainTest() {
-    AuditLogger.log(AuditLogger.EVENTS.TEST_STARTED, {
-        participantId: window.CCPTApp.currentUser.participantNumber,
-        testType: 'ccpt',
-        sessionGroupId: window.CCPTApp.sessionGroupId
-    });
     try {
         showScreen('ccpt-test');
         const results = await window.CCPTApp.ccptEngine.runMainTest();
-
-        const quality = window.QualityAnalyzer ? window.QualityAnalyzer.analyze('ccpt', results, window.CCPTApp.testConfigurations.ccpt) : null;
-        await saveTestResults('ccpt', results, quality);
+        
+        await saveTestResults('ccpt', results);
         updateTestFunnelProgress('ccpt', results);
-
-        AuditLogger.log(AuditLogger.EVENTS.TEST_COMPLETED, {
-            participantId: window.CCPTApp.currentUser.participantNumber,
-            testType: 'ccpt',
-            sessionGroupId: window.CCPTApp.sessionGroupId,
-            qualityScore: quality ? quality.overallScore : 'unchecked'
-        });
-
+        
         window.CCPTApp.isTestInProgress = false;
         updateNavigationVisibility();
 
-        showScreen('inter-test-rest');
-
+        showScreen('test-funnel');
+        
     } catch (error) {
         console.error('❌ CCPT main test failed:', error);
         window.CCPTApp.isTestInProgress = false;
@@ -656,7 +578,7 @@ async function runCCPTMainTest() {
 
 // ===== N-BACK TEST FLOW =====
 function startNBackTest() {
-    AppLogger.debug('🧠 Starting N-Back test flow...');
+    console.log('🧠 Starting N-Back test flow...');
     
     const config = {
         participantId: window.CCPTApp.currentUser.participantNumber,
@@ -673,7 +595,7 @@ function startNBackTest() {
 // Replace the runNBackPractice() function in public/js/app.js
 
 async function runNBackPractice() {
-    AppLogger.debug('▶️ Running N-Back Practice...');
+    console.log('▶️ Running N-Back Practice...');
     
     // Check if user is logged in
     if (!window.CCPTApp.isLoggedIn || !window.CCPTApp.currentUser) {
@@ -685,7 +607,7 @@ async function runNBackPractice() {
     
     // Initialize N-Back engine if it doesn't exist
     if (!window.CCPTApp.nbackEngine) {
-        AppLogger.debug('🔧 Initializing N-Back engine...');
+        console.log('🔧 Initializing N-Back engine...');
         
         const config = {
             participantId: window.CCPTApp.currentUser.participantNumber,
@@ -694,7 +616,7 @@ async function runNBackPractice() {
         
         try {
             window.CCPTApp.nbackEngine = new NBackTestEngine(config);
-            AppLogger.debug('✅ N-Back Engine initialized successfully');
+            console.log('✅ N-Back Engine initialized successfully');
         } catch (error) {
             console.error('❌ Failed to initialize N-Back Engine:', error);
             showError('Failed to initialize N-Back test. Please try again.');
@@ -713,9 +635,9 @@ async function runNBackPractice() {
         if (testArea) testArea.style.display = 'block';
         
         // Run the practice
-        AppLogger.debug('🧠 Starting N-Back practice session...');
+        console.log('🧠 Starting N-Back practice session...');
         const results = await window.CCPTApp.nbackEngine.runPractice();
-        AppLogger.debug('✅ N-Back Practice completed:', results);
+        console.log('✅ N-Back Practice completed:', results);
         
         // Restore UI
         if (testArea) testArea.style.display = 'none';
@@ -748,7 +670,7 @@ async function runNBackPractice() {
 // Add this as the FIRST thing in your runNBackMainTest() function in app.js
 
 async function runNBackMainTest() {
-    AppLogger.debug('🚀 Starting N-Back Main Test...');
+    console.log('🚀 Starting N-Back Main Test...');
 
         // CRITICAL: Force hide loading screen
     const loadingScreen = document.getElementById('loading-screen');
@@ -758,9 +680,9 @@ async function runNBackMainTest() {
     }
     
     // CRITICAL: Remove any existing overlays first
-    AppLogger.debug('🧹 Cleaning up any existing overlays...');
+    console.log('🧹 Cleaning up any existing overlays...');
     document.querySelectorAll('.nback-overlay, .test-overlay, [id*="countdown"]').forEach(el => {
-        AppLogger.debug('Removing overlay:', el.className, el.id);
+        console.log('Removing overlay:', el.className, el.id);
         el.remove();
     });
     
@@ -779,32 +701,26 @@ async function runNBackMainTest() {
             testArea.style.opacity = '1';
             testArea.style.zIndex = '5000'; // VERY high z-index
             testArea.style.position = 'relative';
-            AppLogger.debug('✅ Main test area made visible with high z-index');
-            AppLogger.debug('Test area computed style:', getComputedStyle(testArea).display, getComputedStyle(testArea).zIndex);
+            console.log('✅ Main test area made visible with high z-index');
+            console.log('Test area computed style:', getComputedStyle(testArea).display, getComputedStyle(testArea).zIndex);
         } else {
             console.error('❌ Could not find nback-main-test-area element');
         }
         
         // Run the main test
         const results = await window.CCPTApp.nbackEngine.runMainTest();
-
-        const quality = window.QualityAnalyzer ? window.QualityAnalyzer.analyze('nback', results, window.CCPTApp.testConfigurations.nback) : null;
-        await saveTestResults('nback', results, quality);
+        
+        // Save results and update progress
+        await saveTestResults('nback', results);
         updateTestFunnelProgress('nback', results);
-
-        AuditLogger.log(AuditLogger.EVENTS.TEST_COMPLETED, {
-            participantId: window.CCPTApp.currentUser.participantNumber,
-            testType: 'nback',
-            sessionGroupId: window.CCPTApp.sessionGroupId,
-            qualityScore: quality ? quality.overallScore : 'unchecked'
-        });
-
+        
         // Test complete
         window.CCPTApp.isTestInProgress = false;
         updateNavigationVisibility();
 
-        // Show post-session questionnaire before final results
-        showScreen('post-session-questionnaire');
+        // Show final results
+        showScreen('final-results');
+        displayFinalResults();
         
     } catch (error) {
         console.error('❌ N-Back main test failed:', error);
@@ -1013,50 +929,23 @@ function displayFinalResults() {
 }
 
 // ===== ADMIN FUNCTIONS =====
-async function loadParticipantList() {
-    const listContainer = document.getElementById('participant-list');
-    if (!listContainer) return;
-
-    listContainer.innerHTML = '<p>Loading...</p>';
-
+function loadParticipantList() {
     try {
-        const participants = await window.AuthSystem.getAllParticipants();
-
-        if (participants.length === 0) {
-            listContainer.innerHTML = '<p>No participants found. Add participants via the Firebase console or the form above.</p>';
-            return;
-        }
-
+        const participants = window.AuthSystem.getAllParticipants();
+        const listContainer = document.getElementById('participant-list');
+        
+        if (!listContainer) return;
+        
         listContainer.innerHTML = participants.map(p => `
-            <div class="participant-item ${p.isActive === false ? 'participant-inactive' : ''}">
+            <div class="participant-item">
                 <strong>${p.participantNumber}</strong>
                 <span class="study-group">${p.studyGroup}</span>
-                <span class="participant-sessions">Sessions: ${p.sessionsCompleted || 0}</span>
-                <span class="participant-status ${p.isActive === false ? 'status-inactive' : 'status-active'}">
-                    ${p.isActive === false ? 'Inactive' : 'Active'}
-                </span>
-                ${p.isActive !== false ? `<button class="btn-sm btn-danger" onclick="deactivateParticipant('${p.participantNumber}')">Deactivate</button>` : ''}
+                <span class="test-assignment">${p.assignedTests.join(', ')}</span>
             </div>
         `).join('');
-
+        
     } catch (error) {
-        AppLogger.error('Failed to load participants:', error);
-        listContainer.innerHTML = '<p style="color:#dc3545;">Could not load participants from Firestore.</p>';
-    }
-}
-
-async function deactivateParticipant(participantNumber) {
-    if (!confirm(`Deactivate participant ${participantNumber}? They will not be able to log in.`)) return;
-    try {
-        await window.AuthSystem.deactivateParticipant(participantNumber);
-        AuditLogger.log(AuditLogger.EVENTS.PARTICIPANT_DEACTIVATED, {
-            adminId: window.CCPTApp.currentUser.participantNumber,
-            targetParticipant: participantNumber
-        });
-        showSuccess(`${participantNumber} deactivated`);
-        loadParticipantList();
-    } catch (err) {
-        showError(`Failed to deactivate: ${err.message}`);
+        console.error('❌ Failed to load participants:', error);
     }
 }
 
@@ -1088,22 +977,17 @@ function loadTestConfigurations() {
 
 async function handleAddParticipant(e) {
     e.preventDefault();
-
+    
     const formData = new FormData(e.target);
     const participantNumber = formData.get('participantNumber').trim();
     const pin = formData.get('pin').trim();
     const studyGroup = formData.get('studyGroup');
-
+    
     try {
-        await window.AuthSystem.enrollParticipant(participantNumber, pin, studyGroup);
-        AuditLogger.log(AuditLogger.EVENTS.PARTICIPANT_ENROLLED, {
-            adminId: window.CCPTApp.currentUser.participantNumber,
-            newParticipant: participantNumber.toUpperCase(),
-            studyGroup
-        });
+        window.AuthSystem.addParticipant(participantNumber, pin, studyGroup);
         loadParticipantList();
         e.target.reset();
-        showSuccess(`Participant ${participantNumber.toUpperCase()} added to Firestore`);
+        showSuccess('Participant added successfully');
     } catch (error) {
         showError(`Failed to add participant: ${error.message}`);
     }
@@ -1150,114 +1034,92 @@ function handleNBackConfigUpdate(e) {
 function loadSessionStatistics() {
     const statsContainer = document.getElementById('session-statistics');
     if (!statsContainer) return;
-
+    
     if (!window.CCPTApp.db) {
-        statsContainer.innerHTML = '<p style="color: #dc3545;">Firebase not connected — statistics unavailable</p>';
+        statsContainer.innerHTML = '<p style="color: #dc3545;">Firebase not connected - using local storage only</p>';
         return;
     }
-
-    statsContainer.innerHTML = '<p>Loading...</p>';
-
+    
     window.CCPTApp.db.collection('test_sessions')
         .orderBy('timestamp', 'desc')
-        .limit(200)
+        .limit(10)
         .get()
         .then(querySnapshot => {
             const sessions = [];
-            querySnapshot.forEach(doc => sessions.push({ id: doc.id, ...doc.data() }));
-
-            // Cache for export
-            window.CCPTApp._cachedSessions = sessions;
-
-            const ccpt = sessions.filter(s => s.testType === 'ccpt');
-            const nback = sessions.filter(s => s.testType === 'nback');
-            const flagged = sessions.filter(s => s.dataQuality && s.dataQuality.overallScore !== 'good');
-            const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 3600 * 1000);
-            const recent = sessions.filter(s => {
-                const ts = s.timestamp && s.timestamp.toDate ? s.timestamp.toDate() : new Date(s.timestamp);
-                return ts >= sevenDaysAgo;
+            querySnapshot.forEach(doc => {
+                sessions.push({ id: doc.id, ...doc.data() });
             });
-
+            
+            const totalSessions = querySnapshot.size;
+            const ccptSessions = sessions.filter(s => s.testType === 'ccpt').length;
+            const nbackSessions = sessions.filter(s => s.testType === 'nback').length;
+            
             statsContainer.innerHTML = `
                 <div class="stats-grid">
-                    <div class="stat-item"><span class="stat-label">Total Sessions (last 200):</span><span class="stat-value">${sessions.length}</span></div>
-                    <div class="stat-item"><span class="stat-label">Last 7 Days:</span><span class="stat-value">${recent.length}</span></div>
-                    <div class="stat-item"><span class="stat-label">CCPT Sessions:</span><span class="stat-value">${ccpt.length}</span></div>
-                    <div class="stat-item"><span class="stat-label">N-Back Sessions:</span><span class="stat-value">${nback.length}</span></div>
-                    <div class="stat-item"><span class="stat-label">Flagged Sessions:</span><span class="stat-value ${flagged.length > 0 ? 'stat-warn' : ''}">${flagged.length}</span></div>
-                </div>
-                <div class="admin-export-section">
-                    <h4>Export Data</h4>
-                    <div class="form-actions" style="flex-wrap:wrap;gap:8px;">
-                        <button class="btn btn-primary" onclick="exportAllSessionsCSV()">Export All Sessions (CSV)</button>
-                        <button class="btn btn-secondary" onclick="exportParticipantSummaryCSV()">Participant Summary (CSV)</button>
+                    <div class="stat-item">
+                        <span class="stat-label">Recent Sessions:</span>
+                        <span class="stat-value">${totalSessions}</span>
                     </div>
-                    <p class="form-help">For a complete export beyond 200 sessions, use <code>scripts/export-csv.js</code> with a service account key.</p>
+                    <div class="stat-item">
+                        <span class="stat-label">CCPT Sessions:</span>
+                        <span class="stat-value">${ccptSessions}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">N-Back Sessions:</span>
+                        <span class="stat-value">${nbackSessions}</span>
+                    </div>
                 </div>
             `;
         })
         .catch(error => {
-            AppLogger.error('Error loading statistics:', error);
-            statsContainer.innerHTML = '<p style="color: #dc3545;">Error loading statistics from Firestore</p>';
+            console.error('Error loading statistics:', error);
+            statsContainer.innerHTML = '<p style="color: #dc3545;">Error loading statistics</p>';
         });
 }
 
-function exportAllSessionsCSV() {
-    const sessions = window.CCPTApp._cachedSessions;
-    if (!sessions || sessions.length === 0) {
-        showError('No session data loaded. Open the Admin Dashboard first.');
-        return;
-    }
-    ExportManager.exportSessionsCSV(sessions, `sessions_all_${new Date().toISOString().slice(0, 10)}.csv`);
-    showSuccess(`Exported ${sessions.length} sessions`);
-}
-
-function exportParticipantSummaryCSV() {
-    const sessions = window.CCPTApp._cachedSessions;
-    if (!sessions || sessions.length === 0) {
-        showError('No session data loaded. Open the Admin Dashboard first.');
-        return;
-    }
-    ExportManager.exportParticipantSummaryCSV(sessions, `participant_summary_${new Date().toISOString().slice(0, 10)}.csv`);
-    showSuccess('Participant summary exported');
-}
-
 // ===== DATA MANAGEMENT =====
-async function saveTestResults(testType, results, quality = null) {
-    AppLogger.debug(`Saving ${testType} results...`);
-
-    const sessionData = {
+async function saveTestResults(testType, results) {
+    console.log(`💾 Saving ${testType} results...`);
+    
+    // Always save to local storage as backup
+    const localData = {
         participantId: window.CCPTApp.currentUser.participantNumber,
         testType: testType,
-        timestamp: new Date(),
+        timestamp: new Date().toISOString(),
         studyGroup: window.CCPTApp.currentUser.studyGroup,
         results: results,
-        configuration: window.CCPTApp.testConfigurations[testType],
-        sessionGroupId: window.CCPTApp.sessionGroupId || null,
-        userAgent: navigator.userAgent,
-        screenResolution: `${window.screen.width}x${window.screen.height}`,
-        dataQuality: quality || null,
-        environmentCheckResults: window.CCPTApp.environmentCheckResults || null,
-        postSessionResponses: window.CCPTApp.postSessionResponses || null
+        configuration: window.CCPTApp.testConfigurations[testType]
     };
-
-    // Always save to local storage as backup
+    
     try {
-        const existing = JSON.parse(localStorage.getItem('ccpt_test_results') || '[]');
-        existing.push({ ...sessionData, timestamp: sessionData.timestamp.toISOString() });
-        localStorage.setItem('ccpt_test_results', JSON.stringify(existing));
+        const existingData = JSON.parse(localStorage.getItem('ccpt_test_results') || '[]');
+        existingData.push(localData);
+        localStorage.setItem('ccpt_test_results', JSON.stringify(existingData));
+        console.log('✅ Results saved to local storage');
     } catch (error) {
         console.warn('⚠️ Failed to save to local storage:', error);
     }
-
+    
+    // Try to save to Firebase if available
     if (!window.CCPTApp.db) {
         console.warn('⚠️ Firebase not available, using local storage only');
         return;
     }
-
+    
     try {
+        const sessionData = {
+            participantId: window.CCPTApp.currentUser.participantNumber,
+            testType: testType,
+            timestamp: new Date(),
+            studyGroup: window.CCPTApp.currentUser.studyGroup,
+            results: results,
+            configuration: window.CCPTApp.testConfigurations[testType],
+            userAgent: navigator.userAgent
+        };
+        
         await window.CCPTApp.db.collection('test_sessions').add(sessionData);
-        AppLogger.debug(`${testType.toUpperCase()} results saved to Firebase`);
+        console.log(`✅ ${testType.toUpperCase()} results saved to Firebase`);
+        
     } catch (error) {
         console.warn(`⚠️ Failed to save ${testType} results to Firebase (using local storage):`, error.message);
     }
@@ -1290,7 +1152,7 @@ function downloadAllResults() {
     document.body.removeChild(a);
     
     URL.revokeObjectURL(url);
-    AppLogger.debug('💾 Complete session results downloaded');
+    console.log('💾 Complete session results downloaded');
 }
 
 // ===== UTILITY FUNCTIONS =====
@@ -1328,7 +1190,7 @@ function showError(message) {
 }
 
 function showSuccess(message) {
-    AppLogger.debug('✅ Success:', message);
+    console.log('✅ Success:', message);
     
     let successElement = document.getElementById('global-success');
     if (!successElement) {
@@ -1378,88 +1240,19 @@ function updateNavigationVisibility() {
 }
 
 function endTestEarly() {
-    const currentTest = window.CCPTApp.isTestInProgress
-        ? (window.CCPTApp.ccptEngine && window.CCPTApp.ccptEngine.isAnySessionRunning() ? 'ccpt' : 'nback')
-        : 'unknown';
-
-    AuditLogger.log(AuditLogger.EVENTS.TEST_ABANDONED, {
-        participantId: window.CCPTApp.currentUser ? window.CCPTApp.currentUser.participantNumber : 'unknown',
-        testType: currentTest,
-        sessionGroupId: window.CCPTApp.sessionGroupId
-    });
-
+    console.log('⏹️ Ending test early...');
+    
+    // Clean up any running tests
     if (window.CCPTApp.ccptEngine) {
         window.CCPTApp.ccptEngine.stop();
     }
     if (window.CCPTApp.nbackEngine) {
         window.CCPTApp.nbackEngine.stop();
     }
-
+    
     window.CCPTApp.isTestInProgress = false;
     updateNavigationVisibility();
-
-    showScreen('test-funnel');
-}
-
-// ===== INTER-TEST REST SCREEN =====
-let _restTimer = null;
-
-function startInterTestRest() {
-    let remaining = 60;
-    const countdown = document.getElementById('rest-countdown');
-    if (!countdown) { startNextTest(); return; }
-
-    countdown.textContent = remaining;
-
-    if (_restTimer) clearInterval(_restTimer);
-    _restTimer = setInterval(() => {
-        remaining -= 1;
-        countdown.textContent = remaining;
-        if (remaining <= 0) {
-            clearInterval(_restTimer);
-            _restTimer = null;
-            startNextTest();
-        }
-    }, 1000);
-}
-
-// ===== POST-SESSION QUESTIONNAIRE =====
-function setupPostSessionQuestionnaire() {
-    const form = document.getElementById('post-session-form');
-    if (!form) return;
-
-    // Show/hide detail fields based on Yes/No answers
-    ['interrupted', 'technicalIssues'].forEach(name => {
-        const detailId = name === 'interrupted' ? 'interrupted-details' : 'technical-details';
-        form.querySelectorAll(`[name="${name}"]`).forEach(radio => {
-            radio.addEventListener('change', () => {
-                const detail = document.getElementById(detailId);
-                if (detail) detail.style.display = radio.value === 'yes' ? 'block' : 'none';
-            });
-        });
-    });
-
-    // Remove any stale listener, then attach fresh one
-    const fresh = form.cloneNode(true);
-    form.parentNode.replaceChild(fresh, form);
-    document.getElementById('post-session-form').addEventListener('submit', (e) => {
-        e.preventDefault();
-        const data = Object.fromEntries(new FormData(e.target).entries());
-        window.CCPTApp.postSessionResponses = {
-            alertness: parseInt(data.alertness) || null,
-            comfort: parseInt(data.comfort) || null,
-            interrupted: data.interrupted === 'yes',
-            interruptedDetails: data.interruptedDetails || '',
-            technicalIssues: data.technicalIssues === 'yes',
-            technicalDetails: data.technicalDetails || '',
-            submittedAt: new Date().toISOString()
-        };
-        showScreen('final-results');
-    });
-}
-
-// ===== ENVIRONMENT CHECK — proceed callback =====
-function proceedFromEnvironmentCheck() {
+    
     showScreen('test-funnel');
 }
 
@@ -1480,16 +1273,16 @@ function setupPracticeScreen() {
 
 // ===== DEBUG UTILITIES =====
 function debugSystemState() {
-    AppLogger.debug('🔍 System Debug Info:');
-    AppLogger.debug('- Auth System:', window.AuthSystem);
-    AppLogger.debug('- Current User:', window.CCPTApp.currentUser);
-    AppLogger.debug('- Is Logged In:', window.CCPTApp.isLoggedIn);
-    AppLogger.debug('- CCPT Engine:', window.CCPTApp.ccptEngine);
-    AppLogger.debug('- N-Back Engine:', window.CCPTApp.nbackEngine);
-    AppLogger.debug('- Test Configurations:', window.CCPTApp.testConfigurations);
+    console.log('🔍 System Debug Info:');
+    console.log('- Auth System:', window.AuthSystem);
+    console.log('- Current User:', window.CCPTApp.currentUser);
+    console.log('- Is Logged In:', window.CCPTApp.isLoggedIn);
+    console.log('- CCPT Engine:', window.CCPTApp.ccptEngine);
+    console.log('- N-Back Engine:', window.CCPTApp.nbackEngine);
+    console.log('- Test Configurations:', window.CCPTApp.testConfigurations);
     
     if (window.AuthSystem) {
-        AppLogger.debug('- Available participants:', Array.from(window.AuthSystem.users.keys()));
+        console.log('- Available participants:', Array.from(window.AuthSystem.users.keys()));
     }
 }
 
@@ -1497,4 +1290,6 @@ function debugSystemState() {
 window.debugSystemState = debugSystemState;
 
 // ===== INITIALIZATION =====
-// initializeApp() is called from the inline script in index.html after DOMContentLoaded.
+document.addEventListener('DOMContentLoaded', function() {
+    initializeApp();
+});

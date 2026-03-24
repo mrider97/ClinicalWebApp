@@ -16,7 +16,7 @@ class NBackTestEngine {
         };
         
         this.reset();
-        AppLogger.debug('🧠 N-Back Test Engine initialized:', this.config);
+        console.log('🧠 N-Back Test Engine initialized:', this.config);
     }
 
     reset() {
@@ -38,7 +38,7 @@ class NBackTestEngine {
     this.activeTimers = new Set();
     this.responseHandler = null;
     
-    AppLogger.debug('🔄 N-Back engine reset complete');
+    console.log('🔄 N-Back engine reset complete');
 }
 
     // ===== GRID SETUP =====
@@ -57,9 +57,9 @@ class NBackTestEngine {
     // Replace the setupTestEnvironment() method in public/js/nback-test.js
 
 setupTestEnvironment() {
-    AppLogger.debug('🎮 Setting up N-Back test environment...');
-    AppLogger.debug('Current screen:', window.CCPTApp.currentScreen);
-    AppLogger.debug('isPractice:', this.isPractice);
+    console.log('🎮 Setting up N-Back test environment...');
+    console.log('Current screen:', window.CCPTApp.currentScreen);
+    console.log('isPractice:', this.isPractice);
     
     // Check which screen we're on and get the appropriate element
     const currentScreen = window.CCPTApp.currentScreen;
@@ -67,15 +67,15 @@ setupTestEnvironment() {
     
     if (currentScreen === 'nback-practice') {
         testArea = document.getElementById('nback-practice-test-area');
-        AppLogger.debug('Looking for practice test area...');
+        console.log('Looking for practice test area...');
     } else if (currentScreen === 'nback-test') {
         testArea = document.getElementById('nback-main-test-area');
-        AppLogger.debug('Looking for main test area...');
+        console.log('Looking for main test area...');
     } else {
         console.error('❌ Unknown screen:', currentScreen);
     }
     
-    AppLogger.debug('🔍 Test area element:', testArea ? '✅ Found' : '❌ Not found');
+    console.log('🔍 Test area element:', testArea ? '✅ Found' : '❌ Not found');
     
     if (!testArea) {
         console.error('❌ N-Back test area not found in DOM');
@@ -93,7 +93,7 @@ setupTestEnvironment() {
     testArea.style.zIndex = '5000';
     testArea.style.backgroundColor = '#f8f9fa';
     testArea.style.minHeight = '600px';
-    AppLogger.debug('✅ Test area forced visible with z-index 5000');
+    console.log('✅ Test area forced visible with z-index 5000');
 
     // Clear and setup grid with MAXIMUM visibility
     const totalTrials = this.isPractice ? this.config.practiceTrials : this.config.totalTrials;
@@ -160,16 +160,16 @@ setupTestEnvironment() {
     this.counterElement = testArea.querySelector('.trial-counter'); // Store counter too
     this.testArea = testArea; // Store test area reference
     
-    AppLogger.debug('Grid element stored:', this.gridElement ? '✅' : '❌');
+    console.log('Grid element stored:', this.gridElement ? '✅' : '❌');
     
     if (this.gridElement) {
         const cells = this.gridElement.querySelectorAll('.grid-cell');
-        AppLogger.debug(`✅ Found ${cells.length} grid cells in correct test area`);
-        AppLogger.debug('Grid z-index:', getComputedStyle(this.gridElement).zIndex);
+        console.log(`✅ Found ${cells.length} grid cells in correct test area`);
+        console.log('Grid z-index:', getComputedStyle(this.gridElement).zIndex);
     }
     
     this.setupResponseHandling();
-    AppLogger.debug('✅ N-Back test environment setup complete');
+    console.log('✅ N-Back test environment setup complete');
 
     
     // Debug: Log all elements with high z-index
@@ -182,17 +182,17 @@ setupTestEnvironment() {
                 highZIndex.push({ element: el.tagName + '.' + el.className, zIndex });
             }
         });
-        AppLogger.debug('🔍 Elements with z-index > 1000:', highZIndex);
+        console.log('🔍 Elements with z-index > 1000:', highZIndex);
     }, 100);
 }
 
 setupResponseHandling() {
-    AppLogger.debug('🎮 Setting up response handling...');
+    console.log('🎮 Setting up response handling...');
     
     // Remove existing listeners
     if (this.responseHandler) {
         document.removeEventListener('keydown', this.responseHandler);
-        AppLogger.debug('🧹 Removed old response handler');
+        console.log('🧹 Removed old response handler');
     }
 
     // Create new response handler
@@ -204,7 +204,7 @@ setupResponseHandling() {
     };
 
     document.addEventListener('keydown', this.responseHandler);
-    AppLogger.debug('✅ Response handler attached');
+    console.log('✅ Response handler attached');
 }
 
     // ===== SEQUENCE GENERATION =====
@@ -213,7 +213,7 @@ setupResponseHandling() {
 // Replace the generateSequence method in your nback-test.js file
 
 generateSequence(numTrials, targetProbability) {
-    AppLogger.debug(`📝 Generating N-Back sequence: ${numTrials} trials, ${(targetProbability * 100)}% targets`);
+    console.log(`📝 Generating N-Back sequence: ${numTrials} trials, ${(targetProbability * 100)}% targets`);
     
     const sequence = [];
     const positions = []; // This will store position indices (0-8 for 3x3 grid)
@@ -234,7 +234,7 @@ generateSequence(numTrials, targetProbability) {
                 // Make it a target (SAME as N-back position)
                 position = nBackPosition;
                 isTarget = true;
-                AppLogger.debug(`🎯 Trial ${trial + 1}: TARGET at position ${position} (matches trial ${trial + 1 - this.config.nLevel} which was also position ${nBackPosition})`);
+                console.log(`🎯 Trial ${trial + 1}: TARGET at position ${position} (matches trial ${trial + 1 - this.config.nLevel} which was also position ${nBackPosition})`);
             } else {
                 // Make it a non-target (DIFFERENT from N-back position)
                 // Get all positions except the N-back position
@@ -248,13 +248,13 @@ generateSequence(numTrials, targetProbability) {
                 // Randomly select from available positions
                 position = availablePositions[Math.floor(Math.random() * availablePositions.length)];
                 isTarget = false;
-                AppLogger.debug(`➖ Trial ${trial + 1}: non-target at position ${position} (n-back trial ${trial + 1 - this.config.nLevel} was at position ${nBackPosition})`);
+                console.log(`➖ Trial ${trial + 1}: non-target at position ${position} (n-back trial ${trial + 1 - this.config.nLevel} was at position ${nBackPosition})`);
             }
         } else {
             // First N trials CANNOT be targets (no history yet)
             position = Math.floor(Math.random() * this.gridPositions.length);
             isTarget = false;
-            AppLogger.debug(`➖ Trial ${trial + 1}: non-target at position ${position} (initial trial - no history)`);
+            console.log(`➖ Trial ${trial + 1}: non-target at position ${position} (initial trial - no history)`);
         }
 
         // Store this position in history
@@ -271,14 +271,14 @@ generateSequence(numTrials, targetProbability) {
 
     const targetCount = sequence.filter(t => t.isTarget).length;
     const actualTargetRate = (targetCount / numTrials * 100).toFixed(1);
-    AppLogger.debug(`✅ Generated sequence: ${targetCount} targets (${actualTargetRate}% of ${numTrials} trials)`);
+    console.log(`✅ Generated sequence: ${targetCount} targets (${actualTargetRate}% of ${numTrials} trials)`);
     
     return sequence;
 }
 
     // ===== TEST EXECUTION =====
     async runPractice() {
-        AppLogger.debug('🎯 Starting N-Back practice...');
+        console.log('🎯 Starting N-Back practice...');
         
         this.isPractice = true;
         this.isRunning = true;
@@ -289,7 +289,7 @@ generateSequence(numTrials, targetProbability) {
             const results = await this.executeTrialSequence(sequence, true);
             
             this.isRunning = false;
-            AppLogger.debug('✅ N-Back practice completed');
+            console.log('✅ N-Back practice completed');
             return this.analyzePracticeResults(results);
             
         } catch (error) {
@@ -300,7 +300,7 @@ generateSequence(numTrials, targetProbability) {
     }
 
     async runMainTest() {
-    AppLogger.debug('🧪 Starting N-Back main test...');
+    console.log('🧪 Starting N-Back main test...');
     
     this.isPractice = false;
     this.isRunning = true;
@@ -320,18 +320,18 @@ generateSequence(numTrials, targetProbability) {
         const counter = document.getElementById('trial-counter');
         if (grid) {
             void grid.offsetHeight; // Force reflow
-            AppLogger.debug('✅ Grid repaint forced');
+            console.log('✅ Grid repaint forced');
         }
         if (counter) {
             void counter.offsetHeight; // Force reflow
-            AppLogger.debug('✅ Counter repaint forced');
+            console.log('✅ Counter repaint forced');
         }
 
         const sequence = this.generateSequence(this.config.totalTrials, this.config.targetProbability);
         const results = await this.executeTrialSequence(sequence, false);
         
         this.isRunning = false;
-        AppLogger.debug('✅ N-Back main test completed');
+        console.log('✅ N-Back main test completed');
         return this.analyzeMainResults(results);
         
     } catch (error) {
@@ -342,7 +342,7 @@ generateSequence(numTrials, targetProbability) {
 }
 
     async executeTrialSequence(sequence, isPractice) {
-    AppLogger.debug(`▶️ Executing ${sequence.length} trials (isPractice: ${isPractice})...`);
+    console.log(`▶️ Executing ${sequence.length} trials (isPractice: ${isPractice})...`);
     
     const trialData = [];
     this.stimulusSequence = sequence;
@@ -358,11 +358,11 @@ generateSequence(numTrials, targetProbability) {
         
         try {
             const trial = sequence[i];
-            AppLogger.debug(`\n=== Starting Trial ${this.currentTrial}/${sequence.length} ===`);
+            console.log(`\n=== Starting Trial ${this.currentTrial}/${sequence.length} ===`);
             const result = await this.executeSingleTrial(trial, isPractice);
             trialData.push(result);
             
-            AppLogger.debug(`=== Completed Trial ${this.currentTrial}/${sequence.length} ===\n`);
+            console.log(`=== Completed Trial ${this.currentTrial}/${sequence.length} ===\n`);
             
         } catch (error) {
             console.error(`❌ Trial ${this.currentTrial} failed:`, error);
@@ -370,12 +370,12 @@ generateSequence(numTrials, targetProbability) {
         }
     }
     
-    AppLogger.debug(`✅ Trial sequence completed: ${trialData.length} trials executed`);
+    console.log(`✅ Trial sequence completed: ${trialData.length} trials executed`);
     return trialData;
 }
 
     async executeSingleTrial(trial, isPractice) {
-        AppLogger.debug(`🎯 N-Back Trial ${trial.trialNumber}: Position ${trial.position} (target: ${trial.isTarget})`);
+        console.log(`🎯 N-Back Trial ${trial.trialNumber}: Position ${trial.position} (target: ${trial.isTarget})`);
         
         const trialStartTime = performance.now();
         const responses = [];
@@ -438,7 +438,7 @@ generateSequence(numTrials, targetProbability) {
         return;
     }
     
-    AppLogger.debug(`💡 Lighting up cell ${position}`);
+    console.log(`💡 Lighting up cell ${position}`);
     
     // Remove active class from all cells first
     cells.forEach(cell => {
@@ -463,7 +463,7 @@ generateSequence(numTrials, targetProbability) {
     
     void targetCell.offsetWidth;
     
-    AppLogger.debug(`✅ Cell ${position} activated`);
+    console.log(`✅ Cell ${position} activated`);
 }
 
 clearGrid() {
@@ -493,7 +493,7 @@ updateTrialCounter() {
     const counterText = `Trial: ${this.currentTrial}/${total}`;
     this.counterElement.textContent = counterText;
     
-    AppLogger.debug(`📢 Counter updated: ${counterText} (isPractice: ${this.isPractice})`);
+    console.log(`📢 Counter updated: ${counterText} (isPractice: ${this.isPractice})`);
 }
 
     // ===== RESPONSE HANDLING =====
@@ -509,7 +509,7 @@ updateTrialCounter() {
             trial: this.currentTrial
         };
         
-        AppLogger.debug('👆 N-Back response recorded:', response);
+        console.log('👆 N-Back response recorded:', response);
         
         // Store response for current trial analysis
         if (!this.currentTrialResponses) {
@@ -576,7 +576,7 @@ updateTrialCounter() {
     }
     
     // Log for debugging
-    AppLogger.debug(`📊 Trial Analysis: ${responseType} | Target: ${isTarget} | Response: ${responseMade} | Correct: ${correct}`);
+    console.log(`📊 Trial Analysis: ${responseType} | Target: ${isTarget} | Response: ${responseMade} | Correct: ${correct}`);
     
     return {
         responseMade,
@@ -719,7 +719,7 @@ updateTrialCounter() {
 
     // ===== CLEANUP =====
     cleanup() {
-        AppLogger.debug('🧹 Cleaning up N-Back test...');
+        console.log('🧹 Cleaning up N-Back test...');
         
         this.isRunning = false;
         
@@ -737,11 +737,11 @@ updateTrialCounter() {
     // Add this entire section to nback-test.js after cleanup() method
 
 async showCountdown() {
-    AppLogger.debug('⏰ Starting N-Back countdown...');
+    console.log('⏰ Starting N-Back countdown...');
     
     // First, remove ANY existing overlays
     document.querySelectorAll('.nback-overlay, [id*="countdown"]').forEach(el => {
-        AppLogger.debug('🧹 Removing existing overlay:', el.id || el.className);
+        console.log('🧹 Removing existing overlay:', el.id || el.className);
         el.remove();
     });
     
@@ -768,7 +768,7 @@ async showCountdown() {
         </div>
     `;
     document.body.appendChild(overlay);
-    AppLogger.debug('✅ Countdown overlay created:', overlay.id);
+    console.log('✅ Countdown overlay created:', overlay.id);
     
     const countdownText = document.getElementById('nback-countdown-text');
     
@@ -784,25 +784,25 @@ async showCountdown() {
     await new Promise(resolve => setTimeout(resolve, 500));
     
     // CRITICAL: Multiple removal attempts with verification
-    AppLogger.debug('🧹 Removing countdown overlay...');
+    console.log('🧹 Removing countdown overlay...');
     
     // Method 1: Direct removal
     if (overlay && overlay.parentNode) {
         overlay.parentNode.removeChild(overlay);
-        AppLogger.debug('✅ Overlay removed via parentNode');
+        console.log('✅ Overlay removed via parentNode');
     }
     
     // Method 2: Remove by ID
     const overlayById = document.getElementById(overlay.id);
     if (overlayById) {
         overlayById.remove();
-        AppLogger.debug('✅ Overlay removed by ID');
+        console.log('✅ Overlay removed by ID');
     }
     
     // Method 3: Remove all overlays as backup
     document.querySelectorAll('.nback-overlay').forEach(el => {
         el.remove();
-        AppLogger.debug('✅ Removed overlay via class selector:', el.id);
+        console.log('✅ Removed overlay via class selector:', el.id);
     });
     
     // Verification
@@ -811,7 +811,7 @@ async showCountdown() {
         console.error('❌ WARNING: Overlays still present:', remainingOverlays);
         remainingOverlays.forEach(el => el.remove());
     } else {
-        AppLogger.debug('✅ All overlays confirmed removed');
+        console.log('✅ All overlays confirmed removed');
     }
     
     // **NEW: Force DOM to update and ensure grid is visible**
@@ -825,15 +825,15 @@ async showCountdown() {
         grid.style.display = 'grid';
         // Force reflow
         void grid.offsetHeight;
-        AppLogger.debug('✅ Grid visibility forced');
+        console.log('✅ Grid visibility forced');
     }
     
     const trialCounter = document.getElementById('trial-counter');
     if (trialCounter) {
         trialCounter.style.visibility = 'visible';
         trialCounter.style.opacity = '1';
-        AppLogger.debug('✅ Trial counter visibility forced');
+        console.log('✅ Trial counter visibility forced');
     }
     
-    AppLogger.debug('✅ N-Back countdown complete and grid verified');
+    console.log('✅ N-Back countdown complete and grid verified');
 }}
