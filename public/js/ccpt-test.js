@@ -7,7 +7,7 @@ class CCPTTestEngine {
         this.config = config;
         this.reset();
         
-        AppLogger.debug('🧪 CCPT Test Engine initialized with config:', config);
+        console.log('🧪 CCPT Test Engine initialized with config:', config);
         this.validateConfig();
     }
     
@@ -53,12 +53,12 @@ class CCPTTestEngine {
             throw new Error('ISI duration must be 500-10000ms');
         }
         
-        AppLogger.debug('✅ Configuration validated successfully');
+        console.log('✅ Configuration validated successfully');
     }
     
     // ===== PUBLIC INTERFACE =====
     async runPractice() {
-        AppLogger.debug('🎯 Starting practice session...');
+        console.log('🎯 Starting practice session...');
         
         try {
             this.isPracticeRunning = true;
@@ -68,7 +68,7 @@ class CCPTTestEngine {
             const trialData = await this.executeTrialSequence(sequence, true);
             const results = this.analyzePracticeResults(trialData);
             
-            AppLogger.debug('✅ Practice completed:', results);
+            console.log('✅ Practice completed:', results);
             return results;
             
         } catch (error) {
@@ -81,7 +81,7 @@ class CCPTTestEngine {
     }
     
     async runMainTest() {
-        AppLogger.debug('🚀 Starting main test...');
+        console.log('🚀 Starting main test...');
         
         try {
             this.isMainTestRunning = true;
@@ -100,7 +100,7 @@ class CCPTTestEngine {
             const trialData = await this.executeTrialSequence(sequence, false);
             const results = this.analyzeMainResults(trialData);
             
-            AppLogger.debug('✅ Main test completed:', results);
+            console.log('✅ Main test completed:', results);
             return results;
             
         } catch (error) {
@@ -113,13 +113,13 @@ class CCPTTestEngine {
     }
     
     stop() {
-        AppLogger.debug('⏹️ Stopping test engine...');
+        console.log('⏹️ Stopping test engine...');
         
         this.isMainTestRunning = false;
         this.isPracticeRunning = false;
         
         this.cleanupTestEnvironment();
-        AppLogger.debug('✅ Test engine fully stopped');
+        console.log('✅ Test engine fully stopped');
     }
     
     // ===== STATUS METHODS =====
@@ -145,7 +145,7 @@ class CCPTTestEngine {
 // ===== REPLACE setupTestEnvironment() METHOD IN ccpt-test.js =====
 
 setupTestEnvironment() {
-    AppLogger.debug('🎮 Setting up CCPT test environment...');
+    console.log('🎮 Setting up CCPT test environment...');
     
     // Check which screen we're on and get the appropriate elements
     const currentScreen = window.CCPTApp.currentScreen;
@@ -162,11 +162,11 @@ setupTestEnvironment() {
         this.testOverlay = document.getElementById('ccpt-test-overlay');
     }
     
-    AppLogger.debug('🔍 DOM Elements found:');
-    AppLogger.debug('- Current screen:', currentScreen);
-    AppLogger.debug('- Stimulus element:', this.stimulusElement ? '✅' : '❌');
-    AppLogger.debug('- Fixation element:', this.fixationElement ? '✅' : '❌');
-    AppLogger.debug('- Test overlay:', this.testOverlay ? '✅' : '❌');
+    console.log('🔍 DOM Elements found:');
+    console.log('- Current screen:', currentScreen);
+    console.log('- Stimulus element:', this.stimulusElement ? '✅' : '❌');
+    console.log('- Fixation element:', this.fixationElement ? '✅' : '❌');
+    console.log('- Test overlay:', this.testOverlay ? '✅' : '❌');
     
     if (!this.stimulusElement || !this.fixationElement) {
         console.error('❌ Missing required DOM elements');
@@ -187,7 +187,7 @@ setupTestEnvironment() {
     // Add test mode styling
     document.body.classList.add('test-mode');
     
-    AppLogger.debug('✅ Test environment set up successfully');
+    console.log('✅ Test environment set up successfully');
 }
     
     setupGlobalResponseHandler() {
@@ -233,12 +233,12 @@ setupTestEnvironment() {
         // Remove test mode styling
         document.body.classList.remove('test-mode');
         
-        AppLogger.debug('🧹 Test environment cleaned up');
+        console.log('🧹 Test environment cleaned up');
     }
     
     // ===== SEQUENCE GENERATION =====
     generateSequence(numTrials, targetProbability) {
-        AppLogger.debug(`📝 Generating sequence: ${numTrials} trials, ${(targetProbability * 100).toFixed(1)}% targets`);
+        console.log(`📝 Generating sequence: ${numTrials} trials, ${(targetProbability * 100).toFixed(1)}% targets`);
         
         const numTargets = Math.round(numTrials * targetProbability);
         const numNonTargets = numTrials - numTargets;
@@ -274,13 +274,13 @@ setupTestEnvironment() {
             trial.trialNumber = index + 1;
         });
         
-        AppLogger.debug(`✅ Sequence generated: ${numTargets} targets, ${numNonTargets} non-targets`);
+        console.log(`✅ Sequence generated: ${numTargets} targets, ${numNonTargets} non-targets`);
         return sequence;
     }
     
     // ===== TRIAL EXECUTION =====
     async executeTrialSequence(sequence, isPractice) {
-        AppLogger.debug(`🔄 Executing ${sequence.length} trials (practice: ${isPractice})`);
+        console.log(`🔄 Executing ${sequence.length} trials (practice: ${isPractice})`);
         
         const trialData = [];
         this.currentTrial = 0;
@@ -288,7 +288,7 @@ setupTestEnvironment() {
         for (const trial of sequence) {
             // Check if we should continue
             if (!this.shouldContinueExecution(isPractice)) {
-                AppLogger.debug('⏹️ Trial execution stopped');
+                console.log('⏹️ Trial execution stopped');
                 break;
             }
             
@@ -296,7 +296,7 @@ setupTestEnvironment() {
             
             // Progress logging for main test
             if (!isPractice && this.currentTrial % 10 === 0) {
-                AppLogger.debug(`📊 Progress: ${this.currentTrial}/${sequence.length} trials`);
+                console.log(`📊 Progress: ${this.currentTrial}/${sequence.length} trials`);
             }
             
             try {
@@ -314,7 +314,7 @@ setupTestEnvironment() {
             }
         }
         
-        AppLogger.debug(`✅ Trial sequence completed: ${trialData.length} trials executed`);
+        console.log(`✅ Trial sequence completed: ${trialData.length} trials executed`);
         return trialData;
     }
     
@@ -327,7 +327,7 @@ setupTestEnvironment() {
     }
     
     async executeSingleTrial(trial, isPractice) {
-        AppLogger.debug(`🎯 Trial ${trial.trialNumber}: ${trial.stimulus} (target: ${trial.isTarget})`);
+        console.log(`🎯 Trial ${trial.trialNumber}: ${trial.stimulus} (target: ${trial.isTarget})`);
         
         const trialStartTime = performance.now();
         const responses = [];
@@ -337,7 +337,7 @@ setupTestEnvironment() {
         
         // === ISI PHASE ===
         const isiStartTime = performance.now();
-        AppLogger.debug(`⏱️ ISI phase starting (${this.config.isiDuration}ms)`);
+        console.log(`⏱️ ISI phase starting (${this.config.isiDuration}ms)`);
         
         const isiResponses = await this.monitorPhaseResponses(
             this.config.isiDuration,
@@ -349,7 +349,7 @@ setupTestEnvironment() {
         // === STIMULUS PHASE ===
         const stimulusStartTime = performance.now();
         this.showStimulus(trial.stimulus, trial.isTarget);
-        AppLogger.debug(`📺 Stimulus displayed: ${trial.stimulus}`);
+        console.log(`📺 Stimulus displayed: ${trial.stimulus}`);
         
         const stimulusResponses = await this.monitorPhaseResponses(
             this.config.stimulusDuration,
@@ -387,7 +387,7 @@ setupTestEnvironment() {
             stimulusDuration: this.config.stimulusDuration
         };
         
-        AppLogger.debug(`✅ Trial ${trial.trialNumber}: ${analysis.responseType} (RT: ${analysis.responseTime || 'N/A'}ms)`);
+        console.log(`✅ Trial ${trial.trialNumber}: ${analysis.responseType} (RT: ${analysis.responseTime || 'N/A'}ms)`);
         
         // Show practice feedback
         if (isPractice) {
@@ -415,7 +415,7 @@ setupTestEnvironment() {
                         absoluteTime: Math.round(responseTime)
                     });
                     
-                    AppLogger.debug(`📝 Response in ${phaseName}: ${relativeTime}ms`);
+                    console.log(`📝 Response in ${phaseName}: ${relativeTime}ms`);
                 }
             };
             
@@ -425,7 +425,7 @@ setupTestEnvironment() {
             // Set timer to end phase
             const timer = setTimeout(() => {
                 document.removeEventListener('keydown', phaseHandler);
-                AppLogger.debug(`⏱️ ${phaseName} phase complete: ${responses.length} responses`);
+                console.log(`⏱️ ${phaseName} phase complete: ${responses.length} responses`);
                 resolve(responses);
             }, duration);
             
@@ -450,7 +450,7 @@ setupTestEnvironment() {
         
         const hasPrematureResponse = isiResponses.length > 0;
         
-        AppLogger.debug(`📊 Analysis: ${responseType}, ISI: ${isiResponses.length}, Stimulus: ${stimulusResponses.length}`);
+        console.log(`📊 Analysis: ${responseType}, ISI: ${isiResponses.length}, Stimulus: ${stimulusResponses.length}`);
         
         return {
             responseType,
@@ -497,7 +497,7 @@ setupTestEnvironment() {
     
     // ===== COUNTDOWN =====
     async showCountdown() {
-    AppLogger.debug('⏰ Starting countdown...');
+    console.log('⏰ Starting countdown...');
     
     if (this.testOverlay) {
         this.testOverlay.classList.remove('hidden');
@@ -516,7 +516,7 @@ setupTestEnvironment() {
         this.testOverlay.classList.add('hidden');
     }
     
-    AppLogger.debug('✅ Countdown complete, overlay hidden');
+    console.log('✅ Countdown complete, overlay hidden');
 }
 
 updateOverlayText(text, color = '#fff') {
